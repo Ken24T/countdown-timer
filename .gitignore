@@ -1,0 +1,41 @@
+# Virtual environments
+venv/
+env/
+.venv/
+.env/
+# If you named it differently, add that too:
+*/Scripts/
+*/bin/
+*/Lib/
+*/lib/
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+*.whl
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# pytest cache
+.pytest_cache/
+
+# Coverage reports
+htmlcov/
+.coverage
+.coverage.*
+
+# VS Code workspace settings (optional)
+.vscode/
+
+# Mac/Linux file system metadata (optional)
+.DS_Store
+.Trash
