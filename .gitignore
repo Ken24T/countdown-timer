@@ -1,41 +1,35 @@
-# Virtual environments
-venv/
-env/
-.venv/
-.env/
-# If you named it differently, add that too:
-*/Scripts/
-*/bin/
-*/Lib/
-*/lib/
-
-# Python bytecode
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
 
-# Distribution / packaging
-build/
-dist/
-*.egg-info/
-.eggs/
-*.whl
+# Virtual environment
+venv/
+.venv/
+ENV/
+env/
+virtualenv/
+VENV/
+# If you use other names for your venv, add them here
 
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
-
-# pytest cache
-.pytest_cache/
-
-# Coverage reports
-htmlcov/
-.coverage
-.coverage.*
-
-# VS Code workspace settings (optional)
+# IDE and editor specific files
 .vscode/
+.idea/
+*.swp
+*.swo
+*~
 
-# Mac/Linux file system metadata (optional)
+# OS-specific files
 .DS_Store
-.Trash
+Thumbs.db
+
+# Data files (if they are generated and shouldn't be versioned,
+# otherwise, if timers_config.json should be versioned, remove data/timers_config.json)
+# For now, assuming timers_config.json might be user-specific or too dynamic for versioning.
+# If you want to version a template or default, consider a different approach.
+# data/timers_config.json 
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
