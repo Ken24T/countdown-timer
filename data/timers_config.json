@@ -4,8 +4,8 @@
         "default_bg_color_title": "#00007f",
         "default_bg_color_time": "#55aaff",
         "remember_window_position": true,
-        "window_x": -229,
-        "window_y": 166,
+        "window_x": 1391,
+        "window_y": 209,
         "window_width": 196,
         "window_height": 603
     },
@@ -33,6 +33,15 @@
             "set_default_title_color": false,
             "set_default_time_color": false,
             "sort_order": 1
+        },
+        "timer_e2934020772b46818928a52253d2f805": {
+            "title": "Chromium Custom Data",
+            "end_date": "2025-05-31 00:00:00",
+            "comment": "Raw Data: \ufffd\u0002\u0000\u0000\u0001\u0000\u0000\u0000\ufffd\u0000\u0000\u0000c\u0000a\u0000l\u0000e\u0000n\u0000d\u0000a\u0000r\u0000i\u0000t\u0000e\u0000m\u0000_\u0000a\u0000a\u0000m\u0000k\u0000a\u0000g\u0000j\u0000k\u0000m\u0000t\u0000a\u0000w\u0000m\u0000w\u0000i\u00003\u0000l\u0000t\u0000f\u0000i\u0000z\u0000d\u0000u\u0000t\u0000n\u0000d\u0000u\u0000w\u0000m\u0000y\u00000\u00004\u0000n\u0000z\u0000y\u0000y\u0000l\u0000w\u0000q\u00003\u0000m\u0000g\u0000y\u00002\u0000y\u0000t\u0000e\u0000z\u0000n\u0000t\u0000b\u0000m\u0000n\u0000g\u0000a\u0000u\u0000a\u0000a\u0000a\u0000a\u0000a\u0000a\u0000c\u00007\u0000f\u0000w\u0000s\u0000q\u00004\u0000g\u0000x\u00003\u0000q\u0000a\u00005\u00005\u0000r\u0000n\u0000z\u0000n\u00009\u0000...",
+            "bg_color_title": "#00007f",
+            "bg_color_time": "#55aaff",
+            "font_size_time": 56,
+            "sort_order": 2
         }
     }
 }

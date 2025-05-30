@@ -2,7 +2,7 @@ import sys
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QPushButton, QScrollArea, QFrame, QLabel, QSizePolicy
 )
-from PySide6.QtCore import Qt, QSize, QMimeData, QByteArray # Added QByteArray
+from PySide6.QtCore import Qt, QSize, QMimeData, QByteArray, QUrl # Added QUrl
 from PySide6 import QtGui # Added for type hints
 # Ensure TimerCard and its DEFAULT constants are imported
 from .components.timer_card import TimerCard, DEFAULT_TIME_FONT_SIZE, DEFAULT_TITLE_BG_COLOR, DEFAULT_TIME_BG_COLOR
@@ -19,6 +19,13 @@ try:
 except ImportError:
     ICALENDAR_AVAILABLE = False
     print("INFO: icalendar and/or pytz library not found. Outlook event parsing will be limited. Install with 'pip install icalendar pytz'")
+
+# Define constants for custom MIME types
+CHROMIUM_CUSTOM_MIME = 'application/x-qt-windows-mime;value="Chromium Web Custom MIME Data Format"'
+OUTLOOK_ITEM_MIME = 'application/x-outlook-item' # Standard Outlook item
+TEXT_CALENDAR_MIME = 'text/calendar'
+TEXT_PLAIN_MIME = 'text/plain'
+TEXT_HTML_MIME = 'text/html'
 
 
 # CONFIG_FILE path and keys for structured config
@@ -168,40 +175,69 @@ class App(QMainWindow):
 
     def dragEnterEvent(self, event: QtGui.QDragEnterEvent):
         mime_data = event.mimeData()
+        accepted = False
+        print(f"DEBUG dragEnterEvent: All formats: {mime_data.formats()}") # Log all formats
+
         if mime_data.hasText() and mime_data.text().startswith("timer_"):
+            print("DEBUG dragEnterEvent: Accepting internal timer card drag")
+            accepted = True
+        elif ICALENDAR_AVAILABLE and mime_data.hasFormat(TEXT_CALENDAR_MIME):
+            print(f"DEBUG dragEnterEvent: Accepting drag for '{TEXT_CALENDAR_MIME}'")
+            accepted = True
+        elif mime_data.hasFormat(OUTLOOK_ITEM_MIME):
+            print(f"DEBUG dragEnterEvent: Accepting drag for '{OUTLOOK_ITEM_MIME}'")
+            accepted = True
+        elif mime_data.hasUrls() and any(url.isLocalFile() and url.toLocalFile().lower().endswith(".ics") for url in mime_data.urls()):
+            print("DEBUG dragEnterEvent: Accepting drag for .ics file URL")
+            accepted = True
+        elif mime_data.hasFormat(CHROMIUM_CUSTOM_MIME):
+            print(f"DEBUG dragEnterEvent: Accepting drag for '{CHROMIUM_CUSTOM_MIME}'")
+            accepted = True
+        elif mime_data.hasFormat(TEXT_HTML_MIME): # Accept HTML
+            print(f"DEBUG dragEnterEvent: Accepting drag for '{TEXT_HTML_MIME}'")
+            accepted = True
+        elif mime_data.hasFormat(TEXT_PLAIN_MIME): # Fallback for plain text
+            print(f"DEBUG dragEnterEvent: Accepting drag for '{TEXT_PLAIN_MIME}' (fallback)")
+            accepted = True
+        
+        if accepted:
             event.acceptProposedAction()
-            return
-        if ICALENDAR_AVAILABLE and mime_data.hasFormat('text/calendar'):
-            event.acceptProposedAction()
-            return
-        if mime_data.hasFormat('application/x-outlook-item'):
-            event.acceptProposedAction()
-            return
-        if mime_data.hasFormat('text/plain'):
-            event.acceptProposedAction()
-            return
-        event.ignore()
+        else:
+            print("DEBUG dragEnterEvent: Ignoring drag, no suitable MIME type found.")
+            event.ignore()
 
     def dragMoveEvent(self, event: QtGui.QDragMoveEvent):
         mime_data = event.mimeData()
+        accepted = False # Assume not accepted initially
+
         if mime_data.hasText() and mime_data.text().startswith("timer_"):
+            accepted = True
+        elif ICALENDAR_AVAILABLE and mime_data.hasFormat(TEXT_CALENDAR_MIME):
+            accepted = True
+        elif mime_data.hasFormat(OUTLOOK_ITEM_MIME):
+            accepted = True
+        elif mime_data.hasUrls() and any(url.isLocalFile() and url.toLocalFile().lower().endswith(".ics") for url in mime_data.urls()):
+            accepted = True
+        elif mime_data.hasFormat(CHROMIUM_CUSTOM_MIME):
+            accepted = True
+        elif mime_data.hasFormat(TEXT_HTML_MIME):
+            accepted = True
+        elif mime_data.hasFormat(TEXT_PLAIN_MIME):
+            accepted = True
+        
+        if accepted:
             event.acceptProposedAction()
-            return
-        if ICALENDAR_AVAILABLE and mime_data.hasFormat('text/calendar'):
-            event.acceptProposedAction()
-            return
-        if mime_data.hasFormat('application/x-outlook-item'):
-            event.acceptProposedAction()
-            return
-        if mime_data.hasFormat('text/plain'):
-            event.acceptProposedAction()
-            return
-        event.ignore()
+        else:
+            event.ignore()
 
     def dropEvent(self, event: QtGui.QDropEvent):
         mime_data = event.mimeData()
+        print(f"DEBUG dropEvent: All formats: {mime_data.formats()}")
+        print(f"DEBUG dropEvent: Has text? {mime_data.hasText()}, Text: {mime_data.text()[:100] if mime_data.hasText() else 'N/A'}")
+        print(f"DEBUG dropEvent: Has HTML? {mime_data.hasHtml()}, HTML: {mime_data.html()[:200] if mime_data.hasHtml() else 'N/A'}") # Increased length for HTML
+        print(f"DEBUG dropEvent: Has URLs? {mime_data.hasUrls()}, URLs: {[url.toString() for url in mime_data.urls()] if mime_data.hasUrls() else 'N/A'}")
 
-        # 1. Handle internal TimerCard drag (existing logic)
+        # 1. Handle internal TimerCard drag
         if mime_data.hasText() and mime_data.text().startswith("timer_"):
             source_card_id = mime_data.text()
             source_widget = self.timers.get(source_card_id)
@@ -256,23 +292,55 @@ class App(QMainWindow):
         end_date_str_parsed = None
         comment = ""
 
-        if ICALENDAR_AVAILABLE and mime_data.hasFormat('text/calendar'):
-            try:
-                q_byte_array: QByteArray = mime_data.data('text/calendar')
-                # Access data using a memory view if direct conversion is problematic
-                # PySide6 QByteArray can be converted to bytes by slicing it [:].data
-                # or by iterating or using buffer protocol if available.
-                # Let's try a simple cast to bytes, which should work if QByteArray implements the buffer protocol.
-                # If not, QByteArray.data() or QByteArray.constData() might be needed, then decode.
-                # For PySide6, QByteArray is implicitly convertible to bytes in many contexts.
-                # The issue might be type checker more than runtime.
-                # Explicitly convert to a standard Python bytes object:
-                python_bytes = q_byte_array.data() # This returns a memoryview/bytes-like object in CPython
-                if not isinstance(python_bytes, bytes):
-                     python_bytes = bytes(q_byte_array) # Fallback if .data() isn't bytes directly
+        # Try parsing .ics file from URL first if present
+        if mime_data.hasUrls():
+            for url in mime_data.urls():
+                if url.isLocalFile():
+                    file_path = url.toLocalFile()
+                    if file_path.lower().endswith(".ics"):
+                        print(f"DEBUG dropEvent: Processing .ics file from URL: {file_path}")
+                        try:
+                            with open(file_path, 'r', encoding='utf-8') as f:
+                                ics_data_from_file = f.read()
+                            
+                            cal = Calendar.from_ical(ics_data_from_file)
+                            for component in cal.walk():
+                                if component.name == "VEVENT":
+                                    summary = component.get('summary')
+                                    description = component.get('description')
+                                    dtend = component.get('dtend')
+                                    
+                                    if summary: title = str(summary)
+                                    if description: comment = str(description)
+                                    if dtend:
+                                        dt_value = dtend.dt
+                                        if isinstance(dt_value, datetime):
+                                            if dt_value.tzinfo:
+                                                dt_value = dt_value.astimezone(pytz.utc).replace(tzinfo=None)
+                                            end_date_str_parsed = dt_value.strftime("%Y-%m-%d %H:%M:%S")
+                                        else: # date object
+                                            end_datetime_obj = datetime.combine(dt_value, datetime.min.time())
+                                            end_date_str_parsed = end_datetime_obj.strftime("%Y-%m-%d %H:%M:%S")
+                                    break 
+                            self.add_new_timer_action(title=title, end_date_str=end_date_str_parsed, comment=comment)
+                            event.acceptProposedAction()
+                            print(f"DEBUG dropEvent: Successfully added timer from .ics file URL: {title}")
+                            return
+                        except Exception as e:
+                            print(f"ERROR dropEvent: Failed to parse .ics file from URL {file_path}: {e}")
+                            # Fall through to try other MIME types if .ics file parsing fails
+                        break # Processed first .ics file found
 
+        if ICALENDAR_AVAILABLE and mime_data.hasFormat(TEXT_CALENDAR_MIME):
+            print(f"DEBUG dropEvent: Processing '{TEXT_CALENDAR_MIME}' data")
+            try:
+                q_byte_array: QByteArray = mime_data.data(TEXT_CALENDAR_MIME)
+                # QByteArray.data() returns a memoryview in PySide6 with Python 3.x
+                # which can be converted to bytes.
+                python_bytes = bytes(q_byte_array.data()) 
                 ics_data = python_bytes.decode('utf-8', errors='replace')
                 
+                print(f"DEBUG dropEvent: ICS Data (first 500 chars):\\n{ics_data[:500]}...")
                 cal = Calendar.from_ical(ics_data)
                 for component in cal.walk():
                     if component.name == "VEVENT":
@@ -296,12 +364,79 @@ class App(QMainWindow):
                         break # Process first event
                 self.add_new_timer_action(title=title, end_date_str=end_date_str_parsed, comment=comment)
                 event.acceptProposedAction()
+                print(f"DEBUG dropEvent: Successfully added timer from '{TEXT_CALENDAR_MIME}': {title}")
                 return
             except Exception as e:
-                print(f"ERROR: Failed to parse iCalendar data: {e}. Trying plain text.")
-                # Fall through to plain text handling
+                print(f"ERROR dropEvent: Failed to parse iCalendar data from '{TEXT_CALENDAR_MIME}': {e}.")
+        
+        # Try processing Chromium custom data
+        if mime_data.hasFormat(CHROMIUM_CUSTOM_MIME):
+            print(f"DEBUG dropEvent: Processing '{CHROMIUM_CUSTOM_MIME}'")
+            try:
+                q_byte_array: QByteArray = mime_data.data(CHROMIUM_CUSTOM_MIME)
+                python_bytes = bytes(q_byte_array.data()) # Convert memoryview to bytes
+                decoded_text = python_bytes.decode('utf-8', errors='replace')
+                print(f"DEBUG dropEvent: Data from '{CHROMIUM_CUSTOM_MIME}' (UTF-8 decoded):\\n----BEGIN DATA----\\n{decoded_text}\\n----END DATA----")
+                
+                # Attempt to parse as JSON (common for web custom data)
+                try:
+                    json_data = json.loads(decoded_text)
+                    print("DEBUG dropEvent: Successfully parsed Chromium data as JSON.")
+                    # Placeholder: Extract info if JSON structure is known
+                    # For now, using generic fields or the whole JSON as comment
+                    evt_title = str(json_data.get('summary', json_data.get('title', "Chromium JSON Event")))
+                    # Crude way to get a string representation for comment
+                    evt_comment_detail = str(json_data) if len(str(json_data)) < 300 else str(json_data)[:300] + "..."
+                    evt_comment = json_data.get('description', evt_comment_detail)
+                    
+                    # Date/time extraction from JSON is highly dependent on its structure
+                    # Example: json_data.get('dtend'), json_data.get('end'), etc.
+                    # Needs inspection of actual JSON from Outlook.
+                    # For now, no date parsing from this JSON.
+                    
+                    self.add_new_timer_action(title=evt_title, comment=str(evt_comment))
+                    event.acceptProposedAction()
+                    print(f"DEBUG dropEvent: Successfully added timer from '{CHROMIUM_CUSTOM_MIME}' (parsed as JSON): {evt_title}")
+                    return
+                except json.JSONDecodeError:
+                    print(f"DEBUG dropEvent: Chromium data from '{CHROMIUM_CUSTOM_MIME}' is not valid JSON. It might be HTML or other structured text.")
+                    # If not JSON, it could be HTML embedded within this custom type, or another format.
+                    # Check if the decoded_text looks like HTML
+                    if decoded_text.strip().lower().startswith("<html") or decoded_text.strip().lower().startswith("<!doctype html"):
+                        print(f"DEBUG dropEvent: '{CHROMIUM_CUSTOM_MIME}' data appears to be HTML. Processing as HTML.")
+                        # Pass to HTML handler or parse here. For now, create a placeholder.
+                        # A more sophisticated HTML parser (e.g., BeautifulSoup) would be needed for real extraction.
+                        # For now, just a placeholder.
+                        self.add_new_timer_action(title="Chromium HTML Event", comment=f"HTML via Chromium MIME: {decoded_text[:200]}...")
+                        event.acceptProposedAction()
+                        return
+                    else:
+                        # If not JSON and not obviously HTML, treat as plain text for now
+                        self.add_new_timer_action(title="Chromium Custom Data", comment=f"Raw Data: {decoded_text[:200]}...")
+                        event.acceptProposedAction()
+                        return
 
-        if mime_data.hasFormat('text/plain'):
+            except Exception as e:
+                print(f"ERROR dropEvent: Failed to process data from '{CHROMIUM_CUSTOM_MIME}': {e}")
+
+        # Fallback to generic HTML if provided and not handled by Chromium specific path
+        if mime_data.hasHtml():
+            print(f"DEBUG dropEvent: Processing '{TEXT_HTML_MIME}' data as a fallback.")
+            html_content = mime_data.html() # This is already a string
+            print(f"DEBUG dropEvent: HTML Content (first 500 chars):\\n{html_content[:500]}...")
+            # Placeholder: A proper HTML parser would be needed here.
+            self.add_new_timer_action(title="Generic HTML Drop", comment=f"HTML: {html_content[:200]}...")
+            event.acceptProposedAction()
+            print(f"DEBUG dropEvent: Successfully added timer from '{TEXT_HTML_MIME}' (fallback): Generic HTML Drop")
+            return
+
+        if mime_data.hasFormat(OUTLOOK_ITEM_MIME):
+            # This format is complex. If we reached here, it means other more specific formats weren't available or failed.
+            print(f"DEBUG dropEvent: '{OUTLOOK_ITEM_MIME}' present, but no direct parser. Attempting fallback to plain text if available.")
+            # No direct action, rely on plain text if also present.
+
+        if mime_data.hasFormat(TEXT_PLAIN_MIME):
+            print(f"DEBUG dropEvent: Processing '{TEXT_PLAIN_MIME}' data as final fallback")
             plain_text = mime_data.text()
             comment = plain_text 
             lines = plain_text.split('\n', 1)
@@ -314,8 +449,10 @@ class App(QMainWindow):
             
             self.add_new_timer_action(title=title, end_date_str=None, comment=comment) # end_date_str is None, will use default
             event.acceptProposedAction()
+            print(f"DEBUG dropEvent: Successfully added timer from '{TEXT_PLAIN_MIME}': {title}")
             return
 
+        print("DEBUG dropEvent: Drop event not handled by any known type or all processing attempts failed.")
         event.ignore()
 
     def update_sort_order_after_drag(self):
