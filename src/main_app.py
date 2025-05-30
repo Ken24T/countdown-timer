@@ -167,7 +167,6 @@ class App(QMainWindow):
                                     key=lambda item: (item[1].get('sort_order', float('inf')), 
                                                       datetime.strptime(item[1]['end_date'], "%Y-%m-%d %H:%M:%S")))
         except Exception as e:
-            print(f"Error sorting timer configs: {e}. Using fallback sort.")
             sorted_configs = sorted(self.timer_configs.items())
 
         for card_id, config in sorted_configs:
@@ -176,34 +175,25 @@ class App(QMainWindow):
     def dragEnterEvent(self, event: QtGui.QDragEnterEvent):
         mime_data = event.mimeData()
         accepted = False
-        print(f"DEBUG dragEnterEvent: All formats: {mime_data.formats()}") # Log all formats
 
         if mime_data.hasText() and mime_data.text().startswith("timer_"):
-            print("DEBUG dragEnterEvent: Accepting internal timer card drag")
             accepted = True
         elif ICALENDAR_AVAILABLE and mime_data.hasFormat(TEXT_CALENDAR_MIME):
-            print(f"DEBUG dragEnterEvent: Accepting drag for '{TEXT_CALENDAR_MIME}'")
             accepted = True
         elif mime_data.hasFormat(OUTLOOK_ITEM_MIME):
-            print(f"DEBUG dragEnterEvent: Accepting drag for '{OUTLOOK_ITEM_MIME}'")
             accepted = True
         elif mime_data.hasUrls() and any(url.isLocalFile() and url.toLocalFile().lower().endswith(".ics") for url in mime_data.urls()):
-            print("DEBUG dragEnterEvent: Accepting drag for .ics file URL")
             accepted = True
         elif mime_data.hasFormat(CHROMIUM_CUSTOM_MIME):
-            print(f"DEBUG dragEnterEvent: Accepting drag for '{CHROMIUM_CUSTOM_MIME}'")
             accepted = True
         elif mime_data.hasFormat(TEXT_HTML_MIME): # Accept HTML
-            print(f"DEBUG dragEnterEvent: Accepting drag for '{TEXT_HTML_MIME}'")
             accepted = True
         elif mime_data.hasFormat(TEXT_PLAIN_MIME): # Fallback for plain text
-            print(f"DEBUG dragEnterEvent: Accepting drag for '{TEXT_PLAIN_MIME}' (fallback)")
             accepted = True
         
         if accepted:
             event.acceptProposedAction()
         else:
-            print("DEBUG dragEnterEvent: Ignoring drag, no suitable MIME type found.")
             event.ignore()
 
     def dragMoveEvent(self, event: QtGui.QDragMoveEvent):
@@ -232,10 +222,6 @@ class App(QMainWindow):
 
     def dropEvent(self, event: QtGui.QDropEvent):
         mime_data = event.mimeData()
-        print(f"DEBUG dropEvent: All formats: {mime_data.formats()}")
-        print(f"DEBUG dropEvent: Has text? {mime_data.hasText()}, Text: {mime_data.text()[:100] if mime_data.hasText() else 'N/A'}")
-        print(f"DEBUG dropEvent: Has HTML? {mime_data.hasHtml()}, HTML: {mime_data.html()[:200] if mime_data.hasHtml() else 'N/A'}") # Increased length for HTML
-        print(f"DEBUG dropEvent: Has URLs? {mime_data.hasUrls()}, URLs: {[url.toString() for url in mime_data.urls()] if mime_data.hasUrls() else 'N/A'}")
 
         # 1. Handle internal TimerCard drag
         if mime_data.hasText() and mime_data.text().startswith("timer_"):
@@ -298,7 +284,7 @@ class App(QMainWindow):
                 if url.isLocalFile():
                     file_path = url.toLocalFile()
                     if file_path.lower().endswith(".ics"):
-                        print(f"DEBUG dropEvent: Processing .ics file from URL: {file_path}")
+                        # print(f"DEBUG dropEvent: Processing .ics file from URL: {file_path}") # Removed print
                         try:
                             with open(file_path, 'r', encoding='utf-8') as f:
                                 ics_data_from_file = f.read()
@@ -324,15 +310,15 @@ class App(QMainWindow):
                                     break 
                             self.add_new_timer_action(title=title, end_date_str=end_date_str_parsed, comment=comment)
                             event.acceptProposedAction()
-                            print(f"DEBUG dropEvent: Successfully added timer from .ics file URL: {title}")
+                            # print(f"DEBUG dropEvent: Successfully added timer from .ics file URL: {title}") # Removed print
                             return
                         except Exception as e:
-                            print(f"ERROR dropEvent: Failed to parse .ics file from URL {file_path}: {e}")
+                            # print(f"ERROR dropEvent: Failed to parse .ics file from URL {file_path}: {e}") # Removed print
                             # Fall through to try other MIME types if .ics file parsing fails
+                            pass # Added pass to maintain block structure
                         break # Processed first .ics file found
 
         if ICALENDAR_AVAILABLE and mime_data.hasFormat(TEXT_CALENDAR_MIME):
-            print(f"DEBUG dropEvent: Processing '{TEXT_CALENDAR_MIME}' data")
             try:
                 q_byte_array: QByteArray = mime_data.data(TEXT_CALENDAR_MIME)
                 # QByteArray.data() returns a memoryview in PySide6 with Python 3.x
@@ -340,7 +326,6 @@ class App(QMainWindow):
                 python_bytes = bytes(q_byte_array.data()) 
                 ics_data = python_bytes.decode('utf-8', errors='replace')
                 
-                print(f"DEBUG dropEvent: ICS Data (first 500 chars):\\n{ics_data[:500]}...")
                 cal = Calendar.from_ical(ics_data)
                 for component in cal.walk():
                     if component.name == "VEVENT":
@@ -364,24 +349,20 @@ class App(QMainWindow):
                         break # Process first event
                 self.add_new_timer_action(title=title, end_date_str=end_date_str_parsed, comment=comment)
                 event.acceptProposedAction()
-                print(f"DEBUG dropEvent: Successfully added timer from '{TEXT_CALENDAR_MIME}': {title}")
                 return
             except Exception as e:
-                print(f"ERROR dropEvent: Failed to parse iCalendar data from '{TEXT_CALENDAR_MIME}': {e}.")
+                pass
         
         # Try processing Chromium custom data
         if mime_data.hasFormat(CHROMIUM_CUSTOM_MIME):
-            print(f"DEBUG dropEvent: Processing '{CHROMIUM_CUSTOM_MIME}'")
             try:
                 q_byte_array: QByteArray = mime_data.data(CHROMIUM_CUSTOM_MIME)
                 python_bytes = bytes(q_byte_array.data()) # Convert memoryview to bytes
                 decoded_text = python_bytes.decode('utf-8', errors='replace')
-                print(f"DEBUG dropEvent: Data from '{CHROMIUM_CUSTOM_MIME}' (UTF-8 decoded):\\n----BEGIN DATA----\\n{decoded_text}\\n----END DATA----")
                 
                 # Attempt to parse as JSON (common for web custom data)
                 try:
                     json_data = json.loads(decoded_text)
-                    print("DEBUG dropEvent: Successfully parsed Chromium data as JSON.")
                     # Placeholder: Extract info if JSON structure is known
                     # For now, using generic fields or the whole JSON as comment
                     evt_title = str(json_data.get('summary', json_data.get('title', "Chromium JSON Event")))
@@ -396,63 +377,33 @@ class App(QMainWindow):
                     
                     self.add_new_timer_action(title=evt_title, comment=str(evt_comment))
                     event.acceptProposedAction()
-                    print(f"DEBUG dropEvent: Successfully added timer from '{CHROMIUM_CUSTOM_MIME}' (parsed as JSON): {evt_title}")
                     return
                 except json.JSONDecodeError:
-                    print(f"DEBUG dropEvent: Chromium data from '{CHROMIUM_CUSTOM_MIME}' is not valid JSON. It might be HTML or other structured text.")
-                    # If not JSON, it could be HTML embedded within this custom type, or another format.
-                    # Check if the decoded_text looks like HTML
-                    if decoded_text.strip().lower().startswith("<html") or decoded_text.strip().lower().startswith("<!doctype html"):
-                        print(f"DEBUG dropEvent: '{CHROMIUM_CUSTOM_MIME}' data appears to be HTML. Processing as HTML.")
-                        # Pass to HTML handler or parse here. For now, create a placeholder.
-                        # A more sophisticated HTML parser (e.g., BeautifulSoup) would be needed for real extraction.
-                        # For now, just a placeholder.
-                        self.add_new_timer_action(title="Chromium HTML Event", comment=f"HTML via Chromium MIME: {decoded_text[:200]}...")
-                        event.acceptProposedAction()
-                        return
-                    else:
-                        # If not JSON and not obviously HTML, treat as plain text for now
-                        self.add_new_timer_action(title="Chromium Custom Data", comment=f"Raw Data: {decoded_text[:200]}...")
-                        event.acceptProposedAction()
-                        return
+                    # Fall through to plain text handling if not JSON
+                    pass
+                except Exception as e:
+                    # Fall through to plain text handling
+                    pass
 
             except Exception as e:
-                print(f"ERROR dropEvent: Failed to process data from '{CHROMIUM_CUSTOM_MIME}': {e}")
+                # Fall through to plain text handling
+                pass
 
-        # Fallback to generic HTML if provided and not handled by Chromium specific path
-        if mime_data.hasHtml():
-            print(f"DEBUG dropEvent: Processing '{TEXT_HTML_MIME}' data as a fallback.")
-            html_content = mime_data.html() # This is already a string
-            print(f"DEBUG dropEvent: HTML Content (first 500 chars):\\n{html_content[:500]}...")
-            # Placeholder: A proper HTML parser would be needed here.
-            self.add_new_timer_action(title="Generic HTML Drop", comment=f"HTML: {html_content[:200]}...")
+        # Fallback to plain text if available and other handlers didn't succeed
+        if mime_data.hasText():
+            # Use the text as title or comment, create a default timer
+            text_content = mime_data.text()
+            # Simple heuristic: if it's a long text, use first part as title, rest as comment
+            if len(text_content) > 50:
+                title = text_content[:50] + "..."
+                comment = text_content
+            else:
+                title = text_content
+                comment = ""
+            self.add_new_timer_action(title=title, comment=comment)
             event.acceptProposedAction()
-            print(f"DEBUG dropEvent: Successfully added timer from '{TEXT_HTML_MIME}' (fallback): Generic HTML Drop")
             return
 
-        if mime_data.hasFormat(OUTLOOK_ITEM_MIME):
-            # This format is complex. If we reached here, it means other more specific formats weren't available or failed.
-            print(f"DEBUG dropEvent: '{OUTLOOK_ITEM_MIME}' present, but no direct parser. Attempting fallback to plain text if available.")
-            # No direct action, rely on plain text if also present.
-
-        if mime_data.hasFormat(TEXT_PLAIN_MIME):
-            print(f"DEBUG dropEvent: Processing '{TEXT_PLAIN_MIME}' data as final fallback")
-            plain_text = mime_data.text()
-            comment = plain_text 
-            lines = plain_text.split('\n', 1)
-            if lines:
-                title = lines[0].strip()
-                if len(lines) > 1: 
-                    comment = lines[1].strip()
-                else: # Only one line provided
-                    comment = "" # Use the single line as title, no separate comment
-            
-            self.add_new_timer_action(title=title, end_date_str=None, comment=comment) # end_date_str is None, will use default
-            event.acceptProposedAction()
-            print(f"DEBUG dropEvent: Successfully added timer from '{TEXT_PLAIN_MIME}': {title}")
-            return
-
-        print("DEBUG dropEvent: Drop event not handled by any known type or all processing attempts failed.")
         event.ignore()
 
     def update_sort_order_after_drag(self):
