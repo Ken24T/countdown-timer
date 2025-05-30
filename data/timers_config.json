@@ -1,26 +1,28 @@
 {
     "global_settings": {
-        "default_time_font_size": 56,
+        "default_time_font_size": 48,
         "default_bg_color_title": "#00007f",
         "default_bg_color_time": "#55aaff",
         "remember_window_position": true,
-        "window_x": 159,
-        "window_y": 65,
-        "window_width": 207,
-        "window_height": 982
+        "window_x": -1190,
+        "window_y": 249,
+        "window_width": 157,
+        "window_height": 559
     },
     "timers": {
         "timer_1748562079870_0": {
             "title": "Birthday",
             "end_date": "2025-07-24 00:00:00",
-            "comment": "    def apply_region_colors(self):\n        # Fetch colors from config (guaranteed to have defaults by __init__)\n        title_color_hex = self.config[\"bg_color_title\"]\n        time_color_hex = self.config[\"bg_color_time\"]\n        \n        # Determine text color based on background (simple version: white for dark, black for light)\n        # For simplicity, we'll use a fixed light color for now, assuming backgrounds can be dark.\n        # A more robust solution would calculate luminance.\n        text_color = \"#FFFFFF\" # White text for visibility on potentially dark backgrounds",
+            "comment": "def apply_region_colors(self): # Fetch colors from config (guaranteed to have defaults by __init__) title_color_hex = self.config[\"bg_color_title\"] time_color_hex = self.config[\"bg_color_time\"] # Determine text color based on background (simple version: white for dark, black for light) # For simplicity, we'll use a fixed light color for now, assuming backgrounds can be dark. # A more robust solution would calculate luminance. text_color = \"#FFFFFF\" # White text for visibility on potentially dark backgrounds",
             "bg_color_title": "#00007f",
             "bg_color_time": "#55aaff",
-            "font_size_time": 56,
+            "font_size_time": 48,
             "set_default_font_size": false,
             "set_default_title_color": false,
             "set_default_time_color": false,
-            "sort_order": 2
+            "sort_order": 2,
+            "text_color_time": "#000000",
+            "set_default_time_text_color": false
         },
         "timer_1748562704575_1": {
             "title": "New Timer",
@@ -28,11 +30,13 @@
             "comment": "This is a new comment ...",
             "bg_color_title": "#005500",
             "bg_color_time": "#55ff7f",
-            "font_size_time": 56,
-            "set_default_font_size": false,
+            "font_size_time": 48,
+            "set_default_font_size": true,
             "set_default_title_color": false,
             "set_default_time_color": false,
-            "sort_order": 0
+            "sort_order": 0,
+            "text_color_time": "#000000",
+            "set_default_time_text_color": false
         },
         "timer_4b4784cd5d1242198de966e2237b8c85": {
             "title": "Red Timer",
@@ -40,20 +44,27 @@
             "comment": "",
             "bg_color_title": "#aa0000",
             "bg_color_time": "#ffaa7f",
-            "font_size_time": 56,
+            "font_size_time": 48,
             "sort_order": 1,
             "set_default_font_size": false,
             "set_default_title_color": false,
-            "set_default_time_color": false
+            "set_default_time_color": false,
+            "text_color_time": "#000000",
+            "set_default_time_text_color": false
         },
-        "timer_78a47e3a0593403595e0170d4f36f744": {
-            "title": "",
-            "end_date": "2025-05-31 00:00:00",
+        "timer_20f35541f6464c03aa6ef97b10d84bfc": {
+            "title": "New Timer",
+            "end_date": "2025-04-01 00:00:00",
             "comment": "",
             "bg_color_title": "#00007f",
             "bg_color_time": "#55aaff",
-            "font_size_time": 56,
-            "sort_order": 3
+            "font_size_time": 24,
+            "sort_order": 3,
+            "text_color_time": "#000000",
+            "set_default_font_size": false,
+            "set_default_title_color": false,
+            "set_default_time_color": false,
+            "set_default_time_text_color": false
         }
     }
 }

@@ -91,7 +91,7 @@ class App(QMainWindow):
         self.controls_frame = QFrame(self.central_widget) 
         controls_layout = QVBoxLayout(self.controls_frame) 
         self.add_timer_button = QPushButton("Add New Timer") 
-        self.add_timer_button.setFixedWidth(160) 
+        self.add_timer_button.setFixedWidth(120) 
         self.add_timer_button.setStyleSheet("""
             QPushButton { background-color: #003366; color: white; padding: 5px; border-radius: 5px; }
             QPushButton:hover { background-color: #004080; }

@@ -13,6 +13,7 @@ from datetime import datetime, timedelta
 # Default colors to be used if not specified in config
 DEFAULT_TITLE_BG_COLOR = "#696969"  # DimGray
 DEFAULT_TIME_BG_COLOR = "#D3D3D3"   # LightGray
+DEFAULT_TIME_TEXT_COLOR = "#000000" # Black for time text
 DEFAULT_TIME_FONT_SIZE = 48 # Default font size for the time/days display
 
 class TimerSettingsDialog(QDialog):
@@ -23,22 +24,18 @@ class TimerSettingsDialog(QDialog):
         self.app_ref = parent_card.app_ref # Store a reference to the main app
 
         self.setWindowTitle(f"Settings: {self.current_config.get('title', 'Timer')}")
-        # self.setMinimumWidth(80) # Set width to 80
-        self.setFixedWidth(260) # Force width to 320px (80 + 300%)
+        self.setFixedWidth(120)
 
-        main_layout = QVBoxLayout() # Main vertical layout
+        main_layout = QVBoxLayout()
 
-        # --- Form Section for basic inputs ---
         form_layout = QFormLayout()
-        form_layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight) # Align labels to the right
+        form_layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
 
-        # Title
         self.title_entry = QLineEdit(self.current_config.get("title", ""))
-        form_layout.addRow(QLabel("Title:"), self.title_entry) # Shortened label
+        form_layout.addRow(QLabel("Title:"), self.title_entry)
 
-        # End Date
         self.date_edit = QDateEdit()
-        self.date_edit.setDisplayFormat("yy-MM-dd") # Shortened display format
+        self.date_edit.setDisplayFormat("yy-MM-dd")
         self.date_edit.setCalendarPopup(True)
         current_end_datetime_str = self.current_config.get("end_date")
         if current_end_datetime_str:
@@ -49,44 +46,38 @@ class TimerSettingsDialog(QDialog):
                 self.date_edit.setDate(QDate.currentDate().addDays(1))
         else:
             self.date_edit.setDate(QDate.currentDate().addDays(1))
-        form_layout.addRow(QLabel("Date:"), self.date_edit) # Shortened label
+        form_layout.addRow(QLabel("Date:"), self.date_edit)
         
-        # Time Display Font Size
         self.time_font_size_spinbox = QSpinBox()
         self.time_font_size_spinbox.setMinimum(8)
         self.time_font_size_spinbox.setMaximum(100)
         self.time_font_size_spinbox.setValue(self.current_config.get("font_size_time", DEFAULT_TIME_FONT_SIZE))
-        form_layout.addRow(QLabel("Size:"), self.time_font_size_spinbox) # Shortened label
+        form_layout.addRow(QLabel("Size:"), self.time_font_size_spinbox)
 
         main_layout.addLayout(form_layout)
 
-        # Checkbox to set as default font size (placed after form layout)
-        self.set_default_font_size_checkbox = QCheckBox("Default Font Size") # Updated text
+        self.set_default_font_size_checkbox = QCheckBox("Default Font Size")
         main_layout.addWidget(self.set_default_font_size_checkbox)
 
-        # Checkbox for remembering window position
         self.remember_window_pos_checkbox = QCheckBox("Remember window position on exit")
         initial_remember_pos = False
-        # Try to get the setting from app_ref, assuming it has a global_settings dictionary
         if hasattr(self.app_ref, 'global_settings') and \
            isinstance(self.app_ref.global_settings, dict):
             initial_remember_pos = self.app_ref.global_settings.get("remember_window_position", False)
         self.remember_window_pos_checkbox.setChecked(initial_remember_pos)
         main_layout.addWidget(self.remember_window_pos_checkbox)
         
-        main_layout.addSpacing(10) # Space after font size section
+        main_layout.addSpacing(10)
 
-        # Comment
-        main_layout.addWidget(QLabel("Comment:")) # Label can remain as is, on its own line
+        main_layout.addWidget(QLabel("Comment:"))
         self.comment_textbox = QTextEdit(self.current_config.get("comment", ""))
-        self.comment_textbox.setFixedHeight(120) # Increased height (80 * 1.5)
+        self.comment_textbox.setFixedHeight(120)
         main_layout.addWidget(self.comment_textbox)
 
-        main_layout.addSpacing(10) # Space after comment section
+        main_layout.addSpacing(10)
 
-        # --- Color Choosers ---
         # Title Region Color
-        self.title_color_button = QPushButton("Title Background") # Updated text
+        self.title_color_button = QPushButton("Title Background")
         main_layout.addWidget(self.title_color_button)
         self.title_color_button.clicked.connect(self._choose_title_region_color)
         
@@ -94,46 +85,60 @@ class TimerSettingsDialog(QDialog):
             
         self.title_color_preview = QLabel("Preview")
         self.title_color_preview.setAutoFillBackground(True)
-        self.title_color_preview.setFixedHeight(20) # Fixed height for preview
+        self.title_color_preview.setFixedHeight(20)
         main_layout.addWidget(self.title_color_preview)
         
-        self.set_default_title_color_checkbox = QCheckBox("Default Title Background") # Updated text
+        self.set_default_title_color_checkbox = QCheckBox("Default Title Background")
         main_layout.addWidget(self.set_default_title_color_checkbox)
 
-        main_layout.addSpacing(10) # Space after title color section
+        main_layout.addSpacing(10)
 
-        # Time Region Color
-        self.time_color_button = QPushButton("Time Background") # Updated text
-        main_layout.addWidget(self.time_color_button)
-        self.time_color_button.clicked.connect(self._choose_time_region_color)
+        # Time Region Background Color
+        self.time_bg_color_button = QPushButton("Time Background") # Renamed for clarity
+        main_layout.addWidget(self.time_bg_color_button)
+        self.time_bg_color_button.clicked.connect(self._choose_time_bg_color) # Renamed method
 
-        self._temp_selected_time_color = self.current_config.get("bg_color_time", DEFAULT_TIME_BG_COLOR)
+        self._temp_selected_time_bg_color = self.current_config.get("bg_color_time", DEFAULT_TIME_BG_COLOR) # Renamed variable
             
-        self.time_color_preview = QLabel("Preview")
-        self.time_color_preview.setAutoFillBackground(True)
-        self.time_color_preview.setFixedHeight(20) # Fixed height for preview
-        main_layout.addWidget(self.time_color_preview)
+        self.time_bg_color_preview = QLabel("Preview") # Renamed for clarity
+        self.time_bg_color_preview.setAutoFillBackground(True)
+        self.time_bg_color_preview.setFixedHeight(20)
+        main_layout.addWidget(self.time_bg_color_preview)
 
-        self.set_default_time_color_checkbox = QCheckBox("Default Time Background") # Updated text
-        main_layout.addWidget(self.set_default_time_color_checkbox)
+        self.set_default_time_bg_color_checkbox = QCheckBox("Default Time Background") # Renamed for clarity
+        main_layout.addWidget(self.set_default_time_bg_color_checkbox)
+
+        main_layout.addSpacing(10) # Space after time background color section
+
+        # Time Region Text Color
+        self.time_text_color_button = QPushButton("Time Text Color")
+        main_layout.addWidget(self.time_text_color_button)
+        self.time_text_color_button.clicked.connect(self._choose_time_text_color)
+
+        self._temp_selected_time_text_color = self.current_config.get("text_color_time", DEFAULT_TIME_TEXT_COLOR)
+            
+        self.time_text_color_preview = QLabel("Preview")
+        self.time_text_color_preview.setAutoFillBackground(True) # Will show text on this bg
+        self.time_text_color_preview.setFixedHeight(20)
+        main_layout.addWidget(self.time_text_color_preview)
+
+        self.set_default_time_text_color_checkbox = QCheckBox("Default Time Text Color")
+        main_layout.addWidget(self.set_default_time_text_color_checkbox)
         
-        self._update_color_previews() # Call after previews are created
+        self._update_color_previews()
 
-        main_layout.addSpacing(10) # Space before action buttons (above stretch)
-
-        main_layout.addStretch(1) # Add stretch to push buttons to the bottom
+        main_layout.addSpacing(10)
+        main_layout.addStretch(1)
 
         # --- Action Buttons ---
         self.button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel | QDialogButtonBox.StandardButton.Reset)
-        delete_button = self.button_box.addButton("Delete", QDialogButtonBox.ButtonRole.DestructiveRole) # Changed text to "Delete"
+        delete_button = self.button_box.addButton("Delete", QDialogButtonBox.ButtonRole.DestructiveRole)
 
-        self.button_box.accepted.connect(self.accept) # Keep existing accept
+        self.button_box.accepted.connect(self.accept)
         self.button_box.rejected.connect(self.reject)
         self.button_box.button(QDialogButtonBox.StandardButton.Reset).clicked.connect(self._reset_settings)
-        # self.button_box.clicked.connect(self._handle_button_click) # Connect to the specific delete button if needed, or handle via role
-        if delete_button: # Ensure button was added
+        if delete_button:
             delete_button.clicked.connect(self._delete_timer_from_dialog_button)
-
 
         main_layout.addWidget(self.button_box)
         self.setLayout(main_layout)
@@ -147,51 +152,65 @@ class TimerSettingsDialog(QDialog):
         else:
             self.title_color_preview.setPalette(QApplication.style().standardPalette())
 
-        # Update time color preview
-        if self._temp_selected_time_color:
-            palette = self.time_color_preview.palette()
-            palette.setColor(QPalette.ColorRole.Window, QColor(self._temp_selected_time_color))
-            self.time_color_preview.setPalette(palette)
+        # Update time background color preview
+        if self._temp_selected_time_bg_color: # Renamed variable
+            palette = self.time_bg_color_preview.palette() # Renamed preview widget
+            palette.setColor(QPalette.ColorRole.Window, QColor(self._temp_selected_time_bg_color)) # Renamed variable
+            self.time_bg_color_preview.setPalette(palette) # Renamed preview widget
         else:
-            self.time_color_preview.setPalette(QApplication.style().standardPalette())
+            self.time_bg_color_preview.setPalette(QApplication.style().standardPalette()) # Renamed preview widget
+
+        # Update time text color preview
+        if self._temp_selected_time_text_color:
+            palette = self.time_text_color_preview.palette()
+            # Set background to something contrasting to see the text color
+            # For simplicity, let's use the time background color, or white if not set
+            bg_for_text_preview = QColor(self._temp_selected_time_bg_color if self._temp_selected_time_bg_color else "#FFFFFF")
+            palette.setColor(QPalette.ColorRole.Window, bg_for_text_preview)
+            palette.setColor(QPalette.ColorRole.WindowText, QColor(self._temp_selected_time_text_color))
+            self.time_text_color_preview.setPalette(palette)
+            self.time_text_color_preview.setText("Text") # Show sample text
+        else:
+            self.time_text_color_preview.setPalette(QApplication.style().standardPalette())
+            self.time_text_color_preview.setText("Preview")
 
 
     def _choose_title_region_color(self):
         initial_color = QColor(self._temp_selected_title_color) if self._temp_selected_title_color else Qt.GlobalColor.white
         color = QColorDialog.getColor(initial_color, self, "Choose title region background color")
         if color.isValid():
-            self._temp_selected_title_color = color.name() # Corrected variable name
+            self._temp_selected_title_color = color.name()
             self._update_color_previews()
 
-    def _choose_time_region_color(self):
-        initial_color = QColor(self._temp_selected_time_color) if self._temp_selected_time_color else Qt.GlobalColor.white
+    def _choose_time_bg_color(self): # Renamed method
+        initial_color = QColor(self._temp_selected_time_bg_color) if self._temp_selected_time_bg_color else Qt.GlobalColor.white # Renamed variable
         color = QColorDialog.getColor(initial_color, self, "Choose time region background color")
         if color.isValid():
-            self._temp_selected_time_color = color.name()
+            self._temp_selected_time_bg_color = color.name() # Renamed variable
+            self._update_color_previews()
+
+    def _choose_time_text_color(self): # New method
+        initial_color = QColor(self._temp_selected_time_text_color) if self._temp_selected_time_text_color else Qt.GlobalColor.black
+        color = QColorDialog.getColor(initial_color, self, "Choose time text color")
+        if color.isValid():
+            self._temp_selected_time_text_color = color.name()
             self._update_color_previews()
 
     def accept(self):
         # Update the timer card's local config
         self.current_config["title"] = self.title_entry.text()
         
-        # Date handling - ensure it's stored in the correct string format
         qdate_val = self.date_edit.date()
-        # Assuming time is always midnight for simplicity, adjust if time component is needed
         dt_obj = datetime(qdate_val.year(), qdate_val.month(), qdate_val.day(), 0, 0, 0)
         self.current_config["end_date"] = dt_obj.strftime("%Y-%m-%d %H:%M:%S")
 
         self.current_config["font_size_time"] = self.time_font_size_spinbox.value()
         self.current_config["comment"] = self.comment_textbox.toPlainText()
         
-        # Update colors from temp selections
         self.current_config["bg_color_title"] = self._temp_selected_title_color
-        self.current_config["bg_color_time"] = self._temp_selected_time_color
+        self.current_config["bg_color_time"] = self._temp_selected_time_bg_color # Renamed variable
+        self.current_config["text_color_time"] = self._temp_selected_time_text_color # New
 
-        # The TimerCard._open_settings_dialog() method handles updating the card's
-        # configuration after this dialog is accepted and returns the new config.
-        # self.parent_card.update_config(self.current_config) # This line caused the AttributeError
-
-        # Handle "Set as Default" checkboxes
         if self.set_default_font_size_checkbox.isChecked():
             if hasattr(self.app_ref, 'update_global_default_time_font_size'):
                 self.app_ref.update_global_default_time_font_size(self.time_font_size_spinbox.value())
@@ -200,15 +219,19 @@ class TimerSettingsDialog(QDialog):
             if hasattr(self.app_ref, 'update_global_default_title_color'):
                 self.app_ref.update_global_default_title_color(self._temp_selected_title_color)
 
-        if self.set_default_time_color_checkbox.isChecked():
-            if hasattr(self.app_ref, 'update_global_default_time_color'):
-                self.app_ref.update_global_default_time_color(self._temp_selected_time_color)
+        if self.set_default_time_bg_color_checkbox.isChecked(): # Renamed checkbox
+            if hasattr(self.app_ref, 'update_global_default_time_color'): # Existing method in main_app for time BG
+                self.app_ref.update_global_default_time_color(self._temp_selected_time_bg_color) # Renamed variable
 
-        # Handle "Remember window position" checkbox
+        if self.set_default_time_text_color_checkbox.isChecked(): # New checkbox
+            if hasattr(self.app_ref, 'update_global_default_time_text_color'): # New method needed in main_app
+                self.app_ref.update_global_default_time_text_color(self._temp_selected_time_text_color)
+
+
         if hasattr(self.app_ref, 'update_remember_window_position'):
             self.app_ref.update_remember_window_position(self.remember_window_pos_checkbox.isChecked())
 
-        super().accept() # Call QDialog's accept method
+        super().accept()
 
     def _reset_settings(self):
         self.title_entry.setText(self.parent_card.config.get("title", ""))
@@ -224,20 +247,17 @@ class TimerSettingsDialog(QDialog):
         self.comment_textbox.setText(self.parent_card.config.get("comment", ""))
         
         self._temp_selected_title_color = self.parent_card.config.get("bg_color_title", DEFAULT_TITLE_BG_COLOR)
-        self._temp_selected_time_color = self.parent_card.config.get("bg_color_time", DEFAULT_TIME_BG_COLOR)
+        self._temp_selected_time_bg_color = self.parent_card.config.get("bg_color_time", DEFAULT_TIME_BG_COLOR) # Renamed
+        self._temp_selected_time_text_color = self.parent_card.config.get("text_color_time", DEFAULT_TIME_TEXT_COLOR) # New
         self.time_font_size_spinbox.setValue(self.parent_card.config.get("font_size_time", DEFAULT_TIME_FONT_SIZE))
             
         self._update_color_previews()
         
-        # Note: The "Remember window position" checkbox is a global app setting
-        # and should not be reset by this timer-specific reset function.
-        # Its state reflects the current global setting.
         initial_remember_pos = False
         if hasattr(self.parent_card.app_ref, 'global_settings') and \
            isinstance(self.parent_card.app_ref.global_settings, dict):
             initial_remember_pos = self.parent_card.app_ref.global_settings.get("remember_window_position", False)
         self.remember_window_pos_checkbox.setChecked(initial_remember_pos)
-
 
     def _delete_timer_from_dialog_button(self):
         # This method is called specifically by the "Delete Timer" button in the QDialogButtonBox
@@ -251,9 +271,6 @@ class TimerSettingsDialog(QDialog):
         if self.button_box.buttonRole(button) == QDialogButtonBox.ButtonRole.DestructiveRole:
             # This will now call _delete_timer_from_dialog_button if the DestructiveRole button is clicked
             # and not directly connected. However, direct connection is preferred.
-            # To avoid double-handling if direct connection is used, this might need adjustment
-            # or rely solely on direct connections for specific buttons.
-            # For now, let's assume direct connection for delete is primary.
             pass # Or call self._delete_timer() if not directly connected
 
     def _delete_timer(self):
@@ -267,7 +284,6 @@ class TimerSettingsDialog(QDialog):
 
     def get_updated_config(self):
         qdate = self.date_edit.date()
-        # Ensure we get year, month, day from QDate (works in all PySide6 versions)
         year = qdate.year()
         month = qdate.month()
         day = qdate.day()
@@ -277,11 +293,13 @@ class TimerSettingsDialog(QDialog):
             "end_date": end_date_str,
             "comment": self.comment_textbox.toPlainText(),
             "bg_color_title": self._temp_selected_title_color,
-            "bg_color_time": self._temp_selected_time_color,
+            "bg_color_time": self._temp_selected_time_bg_color, # Renamed
+            "text_color_time": self._temp_selected_time_text_color, # New
             "font_size_time": self.time_font_size_spinbox.value(),
             "set_default_font_size": self.set_default_font_size_checkbox.isChecked(),
             "set_default_title_color": self.set_default_title_color_checkbox.isChecked(),
-            "set_default_time_color": self.set_default_time_color_checkbox.isChecked()
+            "set_default_time_color": self.set_default_time_bg_color_checkbox.isChecked(), # Renamed
+            "set_default_time_text_color": self.set_default_time_text_color_checkbox.isChecked() # New
         }
 
 class TimerCard(QFrame): # Changed from ctk.CTkFrame
@@ -291,26 +309,28 @@ class TimerCard(QFrame): # Changed from ctk.CTkFrame
         self.app_ref = app_ref 
         self.card_id = card_id
         self.config = config.copy() if config else {} 
-        self.is_left_mouse_button_down = False # Flag to track mouse button state
+        self.is_left_mouse_button_down = False
         
         if "comment" not in self.config: self.config["comment"] = ""
         if self.config.get("bg_color_title") is None:
             self.config["bg_color_title"] = DEFAULT_TITLE_BG_COLOR
         if self.config.get("bg_color_time") is None:
             self.config["bg_color_time"] = DEFAULT_TIME_BG_COLOR
-        if self.config.get("font_size_time") is None: # Add default for time font size
+        if self.config.get("text_color_time") is None: # New default for time text color
+            self.config["text_color_time"] = DEFAULT_TIME_TEXT_COLOR
+        if self.config.get("font_size_time") is None:
             self.config["font_size_time"] = DEFAULT_TIME_FONT_SIZE
-        if self.config.get("sort_order") is None: # Add default for sort_order
-            # This will be properly set by main_app when loading/creating
+        if self.config.get("sort_order") is None:
             self.config["sort_order"] = 0 
         
         self.title_str = title 
         self.end_date_str = end_date 
 
-        # self.setFixedWidth(160) # Removed to allow horizontal resizing
-        self.setMinimumWidth(160) # Set a minimum width
-        self.setFixedHeight(120) # Keep fixed height
-        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed) # Allow horizontal expansion, fixed vertical
+        # self.setMinimumWidth(160)
+        self.setFixedWidth(110) # Set fixed width to 120px
+        self.setFixedHeight(110)
+        # self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed) # Fixed size for both
         self.setFrameStyle(QFrame.Shape.NoFrame) 
 
         card_layout = QVBoxLayout(self)
@@ -320,13 +340,13 @@ class TimerCard(QFrame): # Changed from ctk.CTkFrame
         # --- Title Region ---
         self.title_region_frame = QFrame()
         self.title_region_frame.setAutoFillBackground(False) 
-        self.title_region_frame.setMaximumHeight(35) # Reduce title section height
+        self.title_region_frame.setMaximumHeight(35)
         title_region_layout = QVBoxLayout(self.title_region_frame)
-        title_region_layout.setContentsMargins(5,2,5,2) # Adjust margins for new height
+        title_region_layout.setContentsMargins(5,2,5,2)
 
         self.title_label = QLabel(self.title_str)
         font_title = self.title_label.font()
-        font_title.setPointSize(11) # Increase title font size
+        font_title.setPointSize(11)
         font_title.setBold(False) 
         self.title_label.setFont(font_title)
         self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -337,67 +357,60 @@ class TimerCard(QFrame): # Changed from ctk.CTkFrame
         self.time_region_frame = QFrame()
         self.time_region_frame.setAutoFillBackground(False) 
         time_region_layout = QVBoxLayout(self.time_region_frame)
-        time_region_layout.setContentsMargins(5,2,5,2) # Compact margins for time region
+        time_region_layout.setContentsMargins(5,2,5,2)
 
         self.time_label = QLabel("")
-        self._apply_time_label_font() # Apply font size from config
+        self._apply_time_label_font()
         self.time_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         time_region_layout.addWidget(self.time_label)
         card_layout.addWidget(self.time_region_frame)
         
-        # Remove stretch factors as the card height is now fixed, and title region has a max height.
-        # The time region will naturally take the remaining space within the fixed card height.
-        # card_layout.setStretchFactor(self.title_region_frame, 0) 
-        # card_layout.setStretchFactor(self.time_region_frame, 1)  
-
-
-        # The self.end_datetime will be parsed from a string like "YYYY-MM-DD 00:00:00"
         self.end_datetime = datetime.strptime(self.end_date_str, "%Y-%m-%d %H:%M:%S")
 
         self.apply_region_colors()
 
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.update_timer_display)
-        self.timer.start(1000)  # Update every second
+        self.timer.start(1000)
         self.update_timer_display()
         
         self.settings_dialog = None
-        self.hover_timer = None # Timer for delayed tooltip
-        # self.drag_start_position = None # Initialized in mousePressEvent
+        self.hover_timer = None
 
     def _apply_time_label_font(self):
         font_time = self.time_label.font()
         font_time.setPointSize(self.config.get("font_size_time", DEFAULT_TIME_FONT_SIZE))
-        font_time.setBold(True)
+        # font_time.setBold(True) # Remove or comment out for a non-bold font
+        font_time.setWeight(QFont.Weight.Light) # Set to a lighter font weight
         self.time_label.setFont(font_time)
 
     def apply_region_colors(self):
         # Fetch colors from config (guaranteed to have defaults by __init__)
-        title_color_hex = self.config["bg_color_title"]
-        time_color_hex = self.config["bg_color_time"]
+        title_bg_color_hex = self.config["bg_color_title"]
+        time_bg_color_hex = self.config["bg_color_time"]
+        time_text_color_hex = self.config["text_color_time"]
         
-        # Determine text color based on background (simple version: white for dark, black for light)
-        # For simplicity, we'll use a fixed light color for now, assuming backgrounds can be dark.
-        # A more robust solution would calculate luminance.
-        text_color = "#FFFFFF" # White text for visibility on potentially dark backgrounds
+        title_text_color = "#FFFFFF" # Ensure title text is white
 
-        border_radius = "10px" # Define radius once
+        border_radius = "10px"
 
         self.title_region_frame.setStyleSheet(f"""
             QFrame {{
-                background-color: {title_color_hex};
-                color: {text_color};
+                background-color: {title_bg_color_hex};
+                /* color property removed from here */
                 border-top-left-radius: {border_radius};
                 border-top-right-radius: {border_radius};
                 border-bottom-left-radius: 0px;
                 border-bottom-right-radius: 0px;
             }}
         """)
+        # Explicitly set title label color to white and background to transparent
+        self.title_label.setStyleSheet(f"color: {title_text_color}; background-color: transparent;")
 
         self.time_region_frame.setStyleSheet(f"""
             QFrame {{
-                background-color: {time_color_hex};
-                color: {text_color};
+                background-color: {time_bg_color_hex};
+                color: {time_text_color_hex}; /* Use configured time text color */
                 border-top-left-radius: 0px;
                 border-top-right-radius: 0px;
                 border-bottom-left-radius: {border_radius};
@@ -587,17 +600,18 @@ if __name__ == '__main__':
     class MockApp: # Mock the main application for testing TimerCard
         def __init__(self):
             self.timers = {}
-            self.global_settings = {"remember_window_position": False} # Default global setting
+            self.global_settings = {"remember_window_position": False} 
             self.default_time_font_size = DEFAULT_TIME_FONT_SIZE
-            self.default_title_color = DEFAULT_TITLE_BG_COLOR
-            self.default_time_color = DEFAULT_TIME_BG_COLOR
+            self.default_title_color = DEFAULT_TITLE_BG_COLOR # bg_color_title
+            self.default_time_color = DEFAULT_TIME_BG_COLOR   # bg_color_time
+            self.default_time_text_color = DEFAULT_TIME_TEXT_COLOR # New global default
 
         def update_timer_config(self, card_id, config):
             print(f"MockApp: Update config for {card_id}: {config}")
         def delete_timer_config_and_card(self, card_id):
             print(f"MockApp: Delete timer {card_id}")
             if card_id in self.timers:
-                self.timers[card_id].deleteLater() # Remove from layout if it was added
+                self.timers[card_id].deleteLater() 
                 del self.timers[card_id]
         def create_timer_cards(self):
             print("MockApp: Recreating timer cards (sorting)")
@@ -605,25 +619,28 @@ if __name__ == '__main__':
         def update_global_default_time_font_size(self, size):
             self.default_time_font_size = size
             print(f"MockApp: Global default time font size set to {size}")
-            # In a real app, this would also save to a global config
             self.global_settings["default_time_font_size"] = size
             self.save_global_settings()
 
-
-        def update_global_default_title_color(self, color_hex):
+        def update_global_default_title_color(self, color_hex): # For title background
             self.default_title_color = color_hex
-            print(f"MockApp: Global default title color set to {color_hex}")
+            print(f"MockApp: Global default title background color set to {color_hex}")
             self.global_settings["default_title_color"] = color_hex
             self.save_global_settings()
 
-        def update_global_default_time_color(self, color_hex):
+        def update_global_default_time_color(self, color_hex): # For time background
             self.default_time_color = color_hex
-            print(f"MockApp: Global default time color set to {color_hex}")
+            print(f"MockApp: Global default time background color set to {color_hex}")
             self.global_settings["default_time_color"] = color_hex
             self.save_global_settings()
             
+        def update_global_default_time_text_color(self, color_hex): # New method for time text color
+            self.default_time_text_color = color_hex
+            print(f"MockApp: Global default time text color set to {color_hex}")
+            self.global_settings["default_time_text_color"] = color_hex # Save to global_settings
+            self.save_global_settings()
+            
         def save_global_settings(self):
-            # In a real app, this would save self.global_settings to a file
             print(f"MockApp: Saving global settings: {self.global_settings}")
 
 
@@ -642,7 +659,8 @@ if __name__ == '__main__':
         "comment": "This is a test comment.",
         "bg_color_title": "#aaffaa", 
         "bg_color_time": "#aaaaff",
-        "font_size_time": 50 # Example custom font size
+        "text_color_time": "#FF0000", # Example: Red time text
+        "font_size_time": 50
     }
     
     card1 = TimerCard(main_layout, 
@@ -659,8 +677,9 @@ if __name__ == '__main__':
         "end_date": (datetime.now() + timedelta(seconds=30)).strftime("%Y-%m-%d %H:%M:%S"),
         "comment": "Expires soon!",
         "bg_color_title": "#ffaaaa", 
-        "bg_color_time": None,
-        "font_size_time": DEFAULT_TIME_FONT_SIZE # Uses default
+        "bg_color_time": None, # Will use default time background
+        "text_color_time": None, # Will use default time text (black)
+        "font_size_time": DEFAULT_TIME_FONT_SIZE
     }
     card2 = TimerCard(main_layout,
                       title=test_config_2["title"],
