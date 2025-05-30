@@ -5,8 +5,8 @@ from PySide6.QtWidgets import (
     QSizePolicy, QDateEdit, QDateTimeEdit, QDialogButtonBox, QSpinBox, QCheckBox,
     QMenu, QToolTip, QFormLayout # Add QFormLayout
 )
-from PySide6.QtCore import Qt, QTimer, QDateTime, QDate, QEvent # Add QEvent
-from PySide6.QtGui import QPalette, QColor, QMouseEvent, QFont, QAction, QCursor, QEnterEvent # Add QCursor, QEnterEvent
+from PySide6.QtCore import Qt, QTimer, QDateTime, QDate, QEvent, QMimeData # Add QMimeData
+from PySide6.QtGui import QPalette, QColor, QMouseEvent, QFont, QAction, QCursor, QEnterEvent, QDrag, QPixmap # Add QDrag, QPixmap
 
 from datetime import datetime, timedelta
 
@@ -291,6 +291,7 @@ class TimerCard(QFrame): # Changed from ctk.CTkFrame
         self.app_ref = app_ref 
         self.card_id = card_id
         self.config = config.copy() if config else {} 
+        self.is_left_mouse_button_down = False # Flag to track mouse button state
         
         if "comment" not in self.config: self.config["comment"] = ""
         if self.config.get("bg_color_title") is None:
@@ -299,6 +300,9 @@ class TimerCard(QFrame): # Changed from ctk.CTkFrame
             self.config["bg_color_time"] = DEFAULT_TIME_BG_COLOR
         if self.config.get("font_size_time") is None: # Add default for time font size
             self.config["font_size_time"] = DEFAULT_TIME_FONT_SIZE
+        if self.config.get("sort_order") is None: # Add default for sort_order
+            # This will be properly set by main_app when loading/creating
+            self.config["sort_order"] = 0 
         
         self.title_str = title 
         self.end_date_str = end_date 
@@ -359,6 +363,7 @@ class TimerCard(QFrame): # Changed from ctk.CTkFrame
         
         self.settings_dialog = None
         self.hover_timer = None # Timer for delayed tooltip
+        # self.drag_start_position = None # Initialized in mousePressEvent
 
     def _apply_time_label_font(self):
         font_time = self.time_label.font()
@@ -420,15 +425,17 @@ class TimerCard(QFrame): # Changed from ctk.CTkFrame
                  self.timer.start(1000) # Or your desired interval
 
     def enterEvent(self, event: QEnterEvent): # Override enterEvent
-        comment = self.config.get("comment", "").strip()
-        if comment:
-            if self.hover_timer:
-                self.hover_timer.stop()
-            
-            self.hover_timer = QTimer(self)
-            self.hover_timer.setSingleShot(True)
-            self.hover_timer.timeout.connect(self._show_comment_tooltip)
-            self.hover_timer.start(1000) # 1-second delay
+        # Only start hover timer if left mouse button is not down (i.e., not in a drag attempt)
+        if not self.is_left_mouse_button_down:
+            comment = self.config.get("comment", "").strip()
+            if comment:
+                if hasattr(self, 'hover_timer') and self.hover_timer and self.hover_timer.isActive(): # Check isActive before stopping
+                    self.hover_timer.stop()
+                
+                self.hover_timer = QTimer(self)
+                self.hover_timer.setSingleShot(True)
+                self.hover_timer.timeout.connect(self._show_comment_tooltip)
+                self.hover_timer.start(1000) # 1-second delay
         super().enterEvent(event)
 
     def leaveEvent(self, event: QEvent): # Override leaveEvent
@@ -446,6 +453,55 @@ class TimerCard(QFrame): # Changed from ctk.CTkFrame
     def mouseDoubleClickEvent(self, event: QMouseEvent):
         self._open_settings_dialog()
         event.accept()
+
+    def mousePressEvent(self, event: QMouseEvent):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.is_left_mouse_button_down = True
+            self.drag_start_position = event.pos()
+            # Stop tooltip timer and hide tooltip if a drag might start
+            if hasattr(self, 'hover_timer') and self.hover_timer and self.hover_timer.isActive():
+                self.hover_timer.stop()
+            QToolTip.hideText() # Hide any currently visible tooltip
+        super().mousePressEvent(event) # Call super to allow other processing (e.g. context menu on right click)
+
+    def mouseMoveEvent(self, event: QMouseEvent):
+        if not (event.buttons() & Qt.MouseButton.LeftButton and self.is_left_mouse_button_down):
+            super().mouseMoveEvent(event)
+            return
+        
+        if not hasattr(self, 'drag_start_position'):
+            super().mouseMoveEvent(event)
+            return
+
+        if (event.pos() - self.drag_start_position).manhattanLength() < QApplication.startDragDistance():
+            super().mouseMoveEvent(event)
+            return
+
+        # Drag is starting
+        if hasattr(self, 'hover_timer') and self.hover_timer and self.hover_timer.isActive():
+            self.hover_timer.stop()
+        QToolTip.hideText()
+
+        drag = QDrag(self)
+        mime_data = QMimeData()
+        mime_data.setText(self.card_id)
+        drag.setMimeData(mime_data)
+
+        pixmap = QPixmap(self.size())
+        self.render(pixmap)
+        drag.setPixmap(pixmap)
+        drag.setHotSpot(event.pos())
+
+        drag.exec(Qt.DropAction.MoveAction)
+        # Note: is_left_mouse_button_down will be reset in mouseReleaseEvent
+        event.accept()
+
+    def mouseReleaseEvent(self, event: QMouseEvent): # Add this method
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.is_left_mouse_button_down = False
+            # Optionally, if a drag didn't occur, one might re-evaluate tooltip display,
+            # but enter/leave events should handle this naturally.
+        super().mouseReleaseEvent(event)
 
     def contextMenuEvent(self, event: QMouseEvent): # Right-click
         menu = QMenu(self)
@@ -481,10 +537,10 @@ class TimerCard(QFrame): # Changed from ctk.CTkFrame
         result = self.settings_dialog.exec() # exec() is blocking
 
         if result == QDialog.DialogCode.Accepted:
-            updated_config = self.settings_dialog.get_updated_config()
+            updated_config_from_dialog = self.settings_dialog.get_updated_config()
             
             # Update internal state and UI
-            self.config.update(updated_config)
+            self.config.update(updated_config_from_dialog) # Update the card's own config
             self.title_str = self.config["title"]
             self.end_date_str = self.config["end_date"]
             
@@ -494,58 +550,33 @@ class TimerCard(QFrame): # Changed from ctk.CTkFrame
                 self.end_datetime = datetime.combine(new_date_obj, datetime.min.time())
             except ValueError:
                 QMessageBox.warning(self.app_ref, "Date Error", "Invalid date format after edit. Reverting.")
-                # Potentially revert or handle error more gracefully
-                return
+                # Potentially revert self.config changes related to date or handle error more gracefully
 
             self.title_label.setText(self.title_str)
             self._apply_time_label_font() # Re-apply font in case it changed
             self.apply_region_colors() 
             self.update_timer_display() 
-            if self.end_datetime > datetime.now() and not self.timer.isActive():
-                self.timer.start(1000) # Restart timer if it was stopped and date is in future
-
-            # If "set as default font size" was checked, update the global default in the main app
-            if updated_config.get("set_default_font_size"):
-                if hasattr(self.app_ref, "update_global_default_time_font_size"):
-                    self.app_ref.update_global_default_time_font_size(updated_config["font_size_time"])
-                else:
-                    print("Warning: Main app does not have 'update_global_default_time_font_size' method.")
             
-            # If "set as default title color" was checked
-            if updated_config.get("set_default_title_color"):
-                if hasattr(self.app_ref, "update_global_default_title_color"):
-                    self.app_ref.update_global_default_title_color(updated_config["bg_color_title"])
-                else:
-                    print("Warning: Main app does not have 'update_global_default_title_color' method.")
+            # Restart timer if it's not active and the end date is in the future
+            if self.end_datetime > datetime.now() and not self.timer.isActive():
+                self.timer.start(1000)
 
-            # If "set as default time color" was checked
-            if updated_config.get("set_default_time_color"):
-                if hasattr(self.app_ref, "update_global_default_time_color"):
-                    self.app_ref.update_global_default_time_color(updated_config["bg_color_time"])
-                else:
-                    print("Warning: Main app does not have 'update_global_default_time_color' method.")
-
-            # Handle the "Remember window position" setting
-            remember_pos_pref = self.settings_dialog.remember_window_pos_checkbox.isChecked()
-            if hasattr(self.app_ref, 'global_settings') and \
-               isinstance(self.app_ref.global_settings, dict):
-                self.app_ref.global_settings["remember_window_position"] = remember_pos_pref
-                if hasattr(self.app_ref, 'save_global_settings'):
-                    self.app_ref.save_global_settings() # Persist global settings
-                else:
-                    print("Warning: Main app does not have 'save_global_settings' method.")
-            else:
-                print("Warning: Main app does not have 'global_settings' dictionary to save window position preference.")
-
+            # Persist the updated configuration for this specific card
             self.app_ref.update_timer_config(self.card_id, self.config)
-            self.app_ref.create_timer_cards() # Re-sort and re-draw all cards
+
+            # Handle "Set as Default" options from the dialog's returned config
+            # These were already handled by the dialog's accept() method by calling app_ref directly.
+            # No explicit action needed here for those, as they modify global settings.
+            # The get_updated_config() in the dialog includes these boolean flags,
+            # but their action (calling app_ref.update_global_default_... ) was done in TimerSettingsDialog.accept().
 
         elif result == QDialog.DialogCode.Accepted + 1: # Custom code for deletion
-            # Deletion is handled by the dialog calling app_ref.delete_timer_config_and_card
-            # and then main_app calls create_timer_cards which redraws everything.
-            pass 
+            # Deletion is handled by TimerSettingsDialog calling app_ref.delete_timer_config_and_card
+            # The main app will then refresh the cards.
+            pass
             
-        self.settings_dialog = None # Allow it to be garbage collected
+        self.settings_dialog = None # Allow dialog to be garbage collected
+
 
     # delete_timer method is now effectively handled within TimerSettingsDialog
     # and the main app's delete_timer_config_and_card

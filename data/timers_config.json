@@ -4,10 +4,10 @@
         "default_bg_color_title": "#00007f",
         "default_bg_color_time": "#55aaff",
         "remember_window_position": true,
-        "window_x": 1011,
-        "window_y": 240,
+        "window_x": 990,
+        "window_y": 322,
         "window_width": 196,
-        "window_height": 383
+        "window_height": 603
     },
     "timers": {
         "timer_1748562079870_0": {
@@ -19,7 +19,8 @@
             "font_size_time": 56,
             "set_default_font_size": false,
             "set_default_title_color": false,
-            "set_default_time_color": false
+            "set_default_time_color": false,
+            "sort_order": 1
         },
         "timer_1748562704575_1": {
             "title": "New Timer",
@@ -30,7 +31,8 @@
             "font_size_time": 56,
             "set_default_font_size": false,
             "set_default_title_color": false,
-            "set_default_time_color": false
+            "set_default_time_color": false,
+            "sort_order": 0
         }
     }
 }

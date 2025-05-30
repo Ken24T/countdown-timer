@@ -118,6 +118,12 @@ class App(QMainWindow):
         self.scroll_area.setWidget(self.scrollable_timers_widget)
         self.main_layout.addWidget(self.scroll_area)
         
+        # Enable drag and drop for the scrollable area
+        self.scrollable_timers_widget.setAcceptDrops(True)
+        self.scrollable_timers_widget.dragEnterEvent = self.dragEnterEvent
+        self.scrollable_timers_widget.dragMoveEvent = self.dragMoveEvent
+        self.scrollable_timers_widget.dropEvent = self.dropEvent
+        
         self.create_timer_cards()
 
     def add_new_timer_action(self): 
@@ -166,8 +172,10 @@ class App(QMainWindow):
         try:
             # Filter out configs missing 'end_date' or where 'end_date' is None before sorting
             valid_configs = {k: v for k, v in self.timer_configs.items() if 'end_date' in v and v['end_date'] is not None}
+            # Sort by 'sort_order' first, then by 'end_date'
             sorted_configs = sorted(valid_configs.items(), 
-                                    key=lambda item: datetime.strptime(item[1]['end_date'], "%Y-%m-%d %H:%M:%S"))
+                                    key=lambda item: (item[1].get('sort_order', float('inf')), 
+                                                      datetime.strptime(item[1]['end_date'], "%Y-%m-%d %H:%M:%S")))
         except KeyError as e:
             print(f"KeyError during sorting timer configs: {e} - some timers might not be displayed.")
             sorted_configs = sorted(self.timer_configs.items()) # Fallback to sort by key
@@ -181,6 +189,74 @@ class App(QMainWindow):
 
         for card_id, config in sorted_configs:
             self.create_timer_card(card_id, config, self.timers_layout)
+
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasText():
+            event.acceptProposedAction()
+
+    def dragMoveEvent(self, event):
+        if event.mimeData().hasText():
+            event.acceptProposedAction()
+
+    def dropEvent(self, event):
+        if event.mimeData().hasText():
+            source_card_id = event.mimeData().text()
+            source_widget = self.timers.get(source_card_id)
+
+            if not source_widget:
+                event.ignore()
+                return
+
+            target_widget = None
+            target_index = -1
+
+            # Find the widget (TimerCard) at the drop position
+            for i in range(self.timers_layout.count()):
+                widget = self.timers_layout.itemAt(i).widget()
+                if widget and widget.underMouse():
+                    target_widget = widget
+                    target_index = i
+                    break
+            
+            if target_widget and target_widget != source_widget:
+                # Re-insert the source_widget at the target_index
+                self.timers_layout.removeWidget(source_widget)
+                self.timers_layout.insertWidget(target_index, source_widget)
+
+                # Update sort_order in configurations
+                self.update_sort_order_after_drag(source_card_id, target_index)
+                event.acceptProposedAction()
+            elif not target_widget:
+                # If dropped in an empty area, move to the end
+                self.timers_layout.removeWidget(source_widget)
+                self.timers_layout.addWidget(source_widget) # Add to the end
+                self.update_sort_order_after_drag(source_card_id, self.timers_layout.count() -1)
+                event.acceptProposedAction()
+            else:
+                event.ignore()
+        else:
+            event.ignore()
+
+    def update_sort_order_after_drag(self, moved_card_id, new_visual_index):
+        # Create a list of (card_id, widget) from the current layout order
+        layout_items = []
+        for i in range(self.timers_layout.count()):
+            item = self.timers_layout.itemAt(i)
+            if item and item.widget():
+                widget = item.widget()
+                # Ensure the widget is a TimerCard and has card_id
+                if isinstance(widget, TimerCard) and hasattr(widget, 'card_id'):
+                    layout_items.append(widget.card_id)
+        
+        # Update the sort_order in self.timer_configs based on the new visual order
+        for i, card_id_in_layout in enumerate(layout_items):
+            if card_id_in_layout in self.timer_configs:
+                self.timer_configs[card_id_in_layout]['sort_order'] = i
+        
+        self.save_app_settings_and_timers()
+        # No need to call create_timer_cards() here as we manually rearranged.
+        # However, if create_timer_cards relies on sort_order for initial creation,
+        # this new order will be used next time it's called.
 
     def load_app_settings_and_timers(self):
         data_dir = os.path.dirname(CONFIG_FILE)
