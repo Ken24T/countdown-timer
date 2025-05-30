@@ -4,10 +4,10 @@
         "default_bg_color_title": "#00007f",
         "default_bg_color_time": "#55aaff",
         "remember_window_position": true,
-        "window_x": -1190,
-        "window_y": 249,
-        "window_width": 157,
-        "window_height": 559
+        "window_x": -465,
+        "window_y": 661,
+        "window_width": 156,
+        "window_height": 566
     },
     "timers": {
         "timer_1748562079870_0": {
@@ -20,7 +20,7 @@
             "set_default_font_size": false,
             "set_default_title_color": false,
             "set_default_time_color": false,
-            "sort_order": 2,
+            "sort_order": 3,
             "text_color_time": "#000000",
             "set_default_time_text_color": false
         },
@@ -31,10 +31,10 @@
             "bg_color_title": "#005500",
             "bg_color_time": "#55ff7f",
             "font_size_time": 48,
-            "set_default_font_size": true,
+            "set_default_font_size": false,
             "set_default_title_color": false,
             "set_default_time_color": false,
-            "sort_order": 0,
+            "sort_order": 1,
             "text_color_time": "#000000",
             "set_default_time_text_color": false
         },
@@ -45,7 +45,7 @@
             "bg_color_title": "#aa0000",
             "bg_color_time": "#ffaa7f",
             "font_size_time": 48,
-            "sort_order": 1,
+            "sort_order": 2,
             "set_default_font_size": false,
             "set_default_title_color": false,
             "set_default_time_color": false,
@@ -59,7 +59,7 @@
             "bg_color_title": "#00007f",
             "bg_color_time": "#55aaff",
             "font_size_time": 24,
-            "sort_order": 3,
+            "sort_order": 0,
             "text_color_time": "#000000",
             "set_default_font_size": false,
             "set_default_title_color": false,

@@ -327,7 +327,7 @@ class TimerCard(QFrame): # Changed from ctk.CTkFrame
         self.end_date_str = end_date 
 
         # self.setMinimumWidth(160)
-        self.setFixedWidth(110) # Set fixed width to 120px
+        self.setFixedWidth(120) # Set fixed width to 120px
         self.setFixedHeight(110)
         # self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed) # Fixed size for both
