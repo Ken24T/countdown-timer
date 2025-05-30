@@ -1,7 +1,31 @@
 {
-    "timer_1": {
-        "title": "Birthday",
-        "end_date": "2025-07-24 08:17:27",
-        "bg_color": "#00ff00"
+    "global_settings": {
+        "default_time_font_size": 56,
+        "default_bg_color_title": "#00007f",
+        "default_bg_color_time": "#55aaff"
+    },
+    "timers": {
+        "timer_1748562079870_0": {
+            "title": "Birthday",
+            "end_date": "2025-07-24 00:00:00",
+            "comment": "    def apply_region_colors(self):\n        # Fetch colors from config (guaranteed to have defaults by __init__)\n        title_color_hex = self.config[\"bg_color_title\"]\n        time_color_hex = self.config[\"bg_color_time\"]\n        \n        # Determine text color based on background (simple version: white for dark, black for light)\n        # For simplicity, we'll use a fixed light color for now, assuming backgrounds can be dark.\n        # A more robust solution would calculate luminance.\n        text_color = \"#FFFFFF\" # White text for visibility on potentially dark backgrounds",
+            "bg_color_title": "#00007f",
+            "bg_color_time": "#55aaff",
+            "font_size_time": 56,
+            "set_default_font_size": false,
+            "set_default_title_color": false,
+            "set_default_time_color": false
+        },
+        "timer_1748562704575_1": {
+            "title": "New Timer",
+            "end_date": "2025-05-31 00:00:00",
+            "comment": "This is a new comment ...",
+            "bg_color_title": "#005500",
+            "bg_color_time": "#55ff7f",
+            "font_size_time": 56,
+            "set_default_font_size": false,
+            "set_default_title_color": false,
+            "set_default_time_color": false
+        }
     }
 }
