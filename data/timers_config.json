@@ -2,7 +2,12 @@
     "global_settings": {
         "default_time_font_size": 56,
         "default_bg_color_title": "#00007f",
-        "default_bg_color_time": "#55aaff"
+        "default_bg_color_time": "#55aaff",
+        "remember_window_position": true,
+        "window_x": 963,
+        "window_y": 214,
+        "window_width": 196,
+        "window_height": 363
     },
     "timers": {
         "timer_1748562079870_0": {

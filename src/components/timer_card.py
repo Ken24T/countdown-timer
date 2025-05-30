@@ -6,7 +6,7 @@ from PySide6.QtWidgets import (
     QMenu, QToolTip, QFormLayout # Add QFormLayout
 )
 from PySide6.QtCore import Qt, QTimer, QDateTime, QDate, QEvent # Add QEvent
-from PySide6.QtGui import QPalette, QColor, QMouseEvent, QFont, QAction, QCursor # Add QCursor
+from PySide6.QtGui import QPalette, QColor, QMouseEvent, QFont, QAction, QCursor, QEnterEvent # Add QCursor, QEnterEvent
 
 from datetime import datetime, timedelta
 
@@ -20,6 +20,7 @@ class TimerSettingsDialog(QDialog):
         super().__init__(parent_card.app_ref) # Parent to the main app window for modality
         self.parent_card = parent_card
         self.current_config = current_config.copy() # Work on a copy
+        self.app_ref = parent_card.app_ref # Store a reference to the main app
 
         self.setWindowTitle(f"Settings: {self.current_config.get('title', 'Timer')}")
         # self.setMinimumWidth(80) # Set width to 80
@@ -62,6 +63,16 @@ class TimerSettingsDialog(QDialog):
         # Checkbox to set as default font size (placed after form layout)
         self.set_default_font_size_checkbox = QCheckBox("Default Font Size") # Updated text
         main_layout.addWidget(self.set_default_font_size_checkbox)
+
+        # Checkbox for remembering window position
+        self.remember_window_pos_checkbox = QCheckBox("Remember window position on exit")
+        initial_remember_pos = False
+        # Try to get the setting from app_ref, assuming it has a global_settings dictionary
+        if hasattr(self.app_ref, 'global_settings') and \
+           isinstance(self.app_ref.global_settings, dict):
+            initial_remember_pos = self.app_ref.global_settings.get("remember_window_position", False)
+        self.remember_window_pos_checkbox.setChecked(initial_remember_pos)
+        main_layout.addWidget(self.remember_window_pos_checkbox)
         
         main_layout.addSpacing(10) # Space after font size section
 
@@ -116,7 +127,7 @@ class TimerSettingsDialog(QDialog):
         self.button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel | QDialogButtonBox.StandardButton.Reset)
         delete_button = self.button_box.addButton("Delete", QDialogButtonBox.ButtonRole.DestructiveRole) # Changed text to "Delete"
 
-        self.button_box.accepted.connect(self.accept)
+        self.button_box.accepted.connect(self.accept) # Keep existing accept
         self.button_box.rejected.connect(self.reject)
         self.button_box.button(QDialogButtonBox.StandardButton.Reset).clicked.connect(self._reset_settings)
         # self.button_box.clicked.connect(self._handle_button_click) # Connect to the specific delete button if needed, or handle via role
@@ -159,6 +170,46 @@ class TimerSettingsDialog(QDialog):
             self._temp_selected_time_color = color.name()
             self._update_color_previews()
 
+    def accept(self):
+        # Update the timer card's local config
+        self.current_config["title"] = self.title_entry.text()
+        
+        # Date handling - ensure it's stored in the correct string format
+        qdate_val = self.date_edit.date()
+        # Assuming time is always midnight for simplicity, adjust if time component is needed
+        dt_obj = datetime(qdate_val.year(), qdate_val.month(), qdate_val.day(), 0, 0, 0)
+        self.current_config["end_date"] = dt_obj.strftime("%Y-%m-%d %H:%M:%S")
+
+        self.current_config["font_size_time"] = self.time_font_size_spinbox.value()
+        self.current_config["comment"] = self.comment_textbox.toPlainText()
+        
+        # Update colors from temp selections
+        self.current_config["bg_color_title"] = self._temp_selected_title_color
+        self.current_config["bg_color_time"] = self._temp_selected_time_color
+
+        # The TimerCard._open_settings_dialog() method handles updating the card's
+        # configuration after this dialog is accepted and returns the new config.
+        # self.parent_card.update_config(self.current_config) # This line caused the AttributeError
+
+        # Handle "Set as Default" checkboxes
+        if self.set_default_font_size_checkbox.isChecked():
+            if hasattr(self.app_ref, 'update_global_default_time_font_size'):
+                self.app_ref.update_global_default_time_font_size(self.time_font_size_spinbox.value())
+        
+        if self.set_default_title_color_checkbox.isChecked():
+            if hasattr(self.app_ref, 'update_global_default_title_color'):
+                self.app_ref.update_global_default_title_color(self._temp_selected_title_color)
+
+        if self.set_default_time_color_checkbox.isChecked():
+            if hasattr(self.app_ref, 'update_global_default_time_color'):
+                self.app_ref.update_global_default_time_color(self._temp_selected_time_color)
+
+        # Handle "Remember window position" checkbox
+        if hasattr(self.app_ref, 'update_remember_window_position'):
+            self.app_ref.update_remember_window_position(self.remember_window_pos_checkbox.isChecked())
+
+        super().accept() # Call QDialog's accept method
+
     def _reset_settings(self):
         self.title_entry.setText(self.parent_card.config.get("title", ""))
         original_end_date_str = self.parent_card.config.get("end_date")
@@ -177,6 +228,15 @@ class TimerSettingsDialog(QDialog):
         self.time_font_size_spinbox.setValue(self.parent_card.config.get("font_size_time", DEFAULT_TIME_FONT_SIZE))
             
         self._update_color_previews()
+        
+        # Note: The "Remember window position" checkbox is a global app setting
+        # and should not be reset by this timer-specific reset function.
+        # Its state reflects the current global setting.
+        initial_remember_pos = False
+        if hasattr(self.parent_card.app_ref, 'global_settings') and \
+           isinstance(self.parent_card.app_ref.global_settings, dict):
+            initial_remember_pos = self.parent_card.app_ref.global_settings.get("remember_window_position", False)
+        self.remember_window_pos_checkbox.setChecked(initial_remember_pos)
 
 
     def _delete_timer_from_dialog_button(self):
@@ -359,7 +419,7 @@ class TimerCard(QFrame): # Changed from ctk.CTkFrame
             if not self.timer.isActive(): # Ensure timer is running if not ended
                  self.timer.start(1000) # Or your desired interval
 
-    def enterEvent(self, event: QEvent): # Override enterEvent
+    def enterEvent(self, event: QEnterEvent): # Override enterEvent
         comment = self.config.get("comment", "").strip()
         if comment:
             if self.hover_timer:
@@ -465,6 +525,17 @@ class TimerCard(QFrame): # Changed from ctk.CTkFrame
                 else:
                     print("Warning: Main app does not have 'update_global_default_time_color' method.")
 
+            # Handle the "Remember window position" setting
+            remember_pos_pref = self.settings_dialog.remember_window_pos_checkbox.isChecked()
+            if hasattr(self.app_ref, 'global_settings') and \
+               isinstance(self.app_ref.global_settings, dict):
+                self.app_ref.global_settings["remember_window_position"] = remember_pos_pref
+                if hasattr(self.app_ref, 'save_global_settings'):
+                    self.app_ref.save_global_settings() # Persist global settings
+                else:
+                    print("Warning: Main app does not have 'save_global_settings' method.")
+            else:
+                print("Warning: Main app does not have 'global_settings' dictionary to save window position preference.")
 
             self.app_ref.update_timer_config(self.card_id, self.config)
             self.app_ref.create_timer_cards() # Re-sort and re-draw all cards
@@ -485,6 +556,11 @@ if __name__ == '__main__':
     class MockApp: # Mock the main application for testing TimerCard
         def __init__(self):
             self.timers = {}
+            self.global_settings = {"remember_window_position": False} # Default global setting
+            self.default_time_font_size = DEFAULT_TIME_FONT_SIZE
+            self.default_title_color = DEFAULT_TITLE_BG_COLOR
+            self.default_time_color = DEFAULT_TIME_BG_COLOR
+
         def update_timer_config(self, card_id, config):
             print(f"MockApp: Update config for {card_id}: {config}")
         def delete_timer_config_and_card(self, card_id):
@@ -494,6 +570,30 @@ if __name__ == '__main__':
                 del self.timers[card_id]
         def create_timer_cards(self):
             print("MockApp: Recreating timer cards (sorting)")
+
+        def update_global_default_time_font_size(self, size):
+            self.default_time_font_size = size
+            print(f"MockApp: Global default time font size set to {size}")
+            # In a real app, this would also save to a global config
+            self.global_settings["default_time_font_size"] = size
+            self.save_global_settings()
+
+
+        def update_global_default_title_color(self, color_hex):
+            self.default_title_color = color_hex
+            print(f"MockApp: Global default title color set to {color_hex}")
+            self.global_settings["default_title_color"] = color_hex
+            self.save_global_settings()
+
+        def update_global_default_time_color(self, color_hex):
+            self.default_time_color = color_hex
+            print(f"MockApp: Global default time color set to {color_hex}")
+            self.global_settings["default_time_color"] = color_hex
+            self.save_global_settings()
+            
+        def save_global_settings(self):
+            # In a real app, this would save self.global_settings to a file
+            print(f"MockApp: Saving global settings: {self.global_settings}")
 
 
     app = QApplication(sys.argv)
