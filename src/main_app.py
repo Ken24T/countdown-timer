@@ -4,7 +4,8 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, QByteArray
 from PySide6 import QtGui
-from .components.timer_card import TimerCard, DEFAULT_TIME_FONT_SIZE, DEFAULT_TITLE_BG_COLOR, DEFAULT_TIME_BG_COLOR
+from PySide6.QtGui import QColor # Add QColor
+from .components.timer_card import TimerCard, DEFAULT_TIME_FONT_SIZE, DEFAULT_TITLE_BG_COLOR, DEFAULT_TIME_BG_COLOR, DEFAULT_TIME_TEXT_COLOR # Corrected and added DEFAULT_TIME_TEXT_COLOR
 import os
 import json
 import uuid
@@ -14,17 +15,70 @@ CHROMIUM_CUSTOM_MIME = 'application/x-qt-windows-mime;value="Chromium Web Custom
 TEXT_PLAIN_MIME = 'text/plain'
 TEXT_HTML_MIME = 'text/html'
 
+DEFAULT_TIME_TEXT_COLOR = "#FFFFFF" # Default color for the countdown time text
+
 CONFIG_FILE = os.path.join("data", "timers_config.json")
 GLOBAL_SETTINGS_KEY = "global_settings"
 TIMERS_KEY = "timers"
+
+# Define a style for opaque backgrounds when the main window is transparent
+OPAQUE_WIDGET_STYLE_FOR_TRANSPARENT_WINDOW = "background-color: palette(window);"
 
 class App(QMainWindow):
     def __init__(self):
         super().__init__()
 
         self.setWindowTitle("Countdown Timer")
-        self.default_width = 220 
+        self.default_width = 220
         self.default_height = 600
+
+        self.global_settings = {
+            "default_time_font_size": DEFAULT_TIME_FONT_SIZE,
+            "default_bg_color_title": DEFAULT_TITLE_BG_COLOR,
+            "default_bg_color_time": DEFAULT_TIME_BG_COLOR,
+            "default_time_text_color": DEFAULT_TIME_TEXT_COLOR, # Added global default time text color
+            "remember_window_position": False,
+            "window_x": None,
+            "window_y": None,
+            "window_width": None,
+            "window_height": None,
+            "main_window_transparent_background": False,
+            "main_window_opacity_level": 1.0
+        }
+        self.timer_configs = {}
+        self.timers = {}
+
+        self.load_app_settings_and_timers() # Load settings first
+
+        # Initialize UI components
+        self.central_widget = QWidget()
+        self.setCentralWidget(self.central_widget)
+        self.main_layout = QVBoxLayout(self.central_widget)
+
+        self.controls_frame = QFrame(self.central_widget)
+        controls_layout = QVBoxLayout(self.controls_frame)
+        self.add_timer_button = QPushButton("Add New Timer")
+        self.add_timer_button.setFixedWidth(120)
+        self.add_timer_button.setStyleSheet("""
+            QPushButton { background-color: #003366; color: white; padding: 5px; border-radius: 5px; }
+            QPushButton:hover { background-color: #004080; }
+            QPushButton:pressed { background-color: #002244; }
+        """)
+        self.add_timer_button.clicked.connect(lambda: self.add_new_timer_action())
+        controls_layout.addWidget(self.add_timer_button, alignment=Qt.AlignmentFlag.AlignCenter)
+        self.main_layout.addWidget(self.controls_frame)
+
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff) # Add this line
+        self.scrollable_timers_widget = QWidget()
+        self.timers_layout = QVBoxLayout(self.scrollable_timers_widget)
+        self.timers_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self.scroll_area.setWidget(self.scrollable_timers_widget)
+        self.main_layout.addWidget(self.scroll_area)
+
+        # Apply transparency and other visual settings now that all relevant widgets are created
+        self.apply_main_window_transparency()
 
         q_app_instance = QApplication.instance()
         if q_app_instance and isinstance(q_app_instance, QApplication):
@@ -38,21 +92,6 @@ class App(QMainWindow):
                     opacity: 240;
                 }
             """)
-
-        self.global_settings = {
-            "default_time_font_size": DEFAULT_TIME_FONT_SIZE,
-            "default_bg_color_title": DEFAULT_TITLE_BG_COLOR,
-            "default_bg_color_time": DEFAULT_TIME_BG_COLOR,
-            "remember_window_position": False,
-            "window_x": None,
-            "window_y": None,
-            "window_width": None,
-            "window_height": None
-        }
-        self.timer_configs = {}
-        self.timers = {}
-
-        self.load_app_settings_and_timers()
 
         if self.global_settings.get("remember_window_position", False):
             raw_x = self.global_settings.get("window_x")
@@ -69,31 +108,8 @@ class App(QMainWindow):
         else:
             self.resize(self.default_width, self.default_height)
 
-        self.central_widget = QWidget()
-        self.setCentralWidget(self.central_widget)
-        self.main_layout = QVBoxLayout(self.central_widget) 
-
-        self.controls_frame = QFrame(self.central_widget) 
-        controls_layout = QVBoxLayout(self.controls_frame) 
-        self.add_timer_button = QPushButton("Add New Timer") 
-        self.add_timer_button.setFixedWidth(120) 
-        self.add_timer_button.setStyleSheet("""
-            QPushButton { background-color: #003366; color: white; padding: 5px; border-radius: 5px; }
-            QPushButton:hover { background-color: #004080; }
-            QPushButton:pressed { background-color: #002244; }
-        """)
-        self.add_timer_button.clicked.connect(lambda: self.add_new_timer_action()) # Lambda to call with defaults
-        controls_layout.addWidget(self.add_timer_button, alignment=Qt.AlignmentFlag.AlignCenter)
-        self.main_layout.addWidget(self.controls_frame)
-
-        self.scroll_area = QScrollArea() 
-        self.scroll_area.setWidgetResizable(True)
-        self.scrollable_timers_widget = QWidget() 
-        self.timers_layout = QVBoxLayout(self.scrollable_timers_widget) 
-        self.timers_layout.setAlignment(Qt.AlignmentFlag.AlignTop) 
-        self.scroll_area.setWidget(self.scrollable_timers_widget)
-        self.main_layout.addWidget(self.scroll_area)
-        
+        # Drag and drop setup for the timer cards container
+        # (self.scrollable_timers_widget was initialized in the first UI block)
         self.scrollable_timers_widget.setAcceptDrops(True)
         self.scrollable_timers_widget.dragEnterEvent = self.dragEnterEvent # type: ignore
         self.scrollable_timers_widget.dragMoveEvent = self.dragMoveEvent # type: ignore
@@ -116,6 +132,7 @@ class App(QMainWindow):
             "comment": comment,
             "bg_color_title": self.global_settings.get("default_bg_color_title", DEFAULT_TITLE_BG_COLOR),
             "bg_color_time": self.global_settings.get("default_bg_color_time", DEFAULT_TIME_BG_COLOR),
+            "time_text_color": self.global_settings.get("default_time_text_color", DEFAULT_TIME_TEXT_COLOR), # Use global default time text color
             "font_size_time": self.global_settings.get("default_time_font_size", DEFAULT_TIME_FONT_SIZE),
             "sort_order": self.get_next_sort_order()
         }
@@ -324,6 +341,10 @@ class App(QMainWindow):
         self.global_settings["default_bg_color_time"] = new_color_hex
         self.save_app_settings_and_timers()
 
+    def update_global_default_time_text_color(self, new_color_hex): # Added this method
+        self.global_settings["default_time_text_color"] = new_color_hex
+        self.save_app_settings_and_timers()
+
     def update_remember_window_position(self, state: bool):
         self.global_settings["remember_window_position"] = state
         if not state:
@@ -331,6 +352,45 @@ class App(QMainWindow):
             self.global_settings["window_y"] = None
             self.global_settings["window_width"] = None
             self.global_settings["window_height"] = None
+        self.save_app_settings_and_timers()
+
+    def apply_main_window_transparency(self):
+        if self.global_settings.get("main_window_transparent_background", False):
+            self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+            opacity = self.global_settings.get("main_window_opacity_level", 1.0)
+            self.setWindowOpacity(opacity)
+
+            self.central_widget.setStyleSheet("background:transparent;")
+            self.scroll_area.setStyleSheet("background:transparent; border:none;")
+            self.scroll_area.viewport().setStyleSheet("background:transparent;")
+            
+            # These widgets should remain opaque using the theme's window color
+            self.scrollable_timers_widget.setStyleSheet(OPAQUE_WIDGET_STYLE_FOR_TRANSPARENT_WINDOW)
+            self.controls_frame.setStyleSheet(OPAQUE_WIDGET_STYLE_FOR_TRANSPARENT_WINDOW)
+        else:
+            self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, False)
+            self.setWindowOpacity(1.0) # Fully opaque
+            
+            # Ensure central widget has the standard window background
+            self.central_widget.setStyleSheet(OPAQUE_WIDGET_STYLE_FOR_TRANSPARENT_WINDOW)
+            # Reset styles for scroll area and viewport to be transparent to central_widget's background
+            self.scroll_area.setStyleSheet("")
+            self.scroll_area.viewport().setStyleSheet("")
+            
+            # These widgets should explicitly use the theme's window background color
+            self.scrollable_timers_widget.setStyleSheet(OPAQUE_WIDGET_STYLE_FOR_TRANSPARENT_WINDOW)
+            self.controls_frame.setStyleSheet(OPAQUE_WIDGET_STYLE_FOR_TRANSPARENT_WINDOW)
+
+    def update_global_main_window_transparency(self, enabled: bool):
+        self.global_settings["main_window_transparent_background"] = enabled
+        self.apply_main_window_transparency() # Re-apply settings
+        self.save_app_settings_and_timers()
+
+    def update_global_main_window_opacity(self, opacity_level: float):
+        # Ensure opacity is within valid range [0.0, 1.0]
+        level = max(0.0, min(1.0, opacity_level))
+        self.global_settings["main_window_opacity_level"] = level
+        self.apply_main_window_transparency() # Re-apply settings
         self.save_app_settings_and_timers()
 
     def closeEvent(self, event: QtGui.QCloseEvent):

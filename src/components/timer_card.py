@@ -24,7 +24,7 @@ class TimerSettingsDialog(QDialog):
         self.app_ref = parent_card.app_ref # Store a reference to the main app
 
         self.setWindowTitle(f"Settings: {self.current_config.get('title', 'Timer')}")
-        self.setFixedWidth(120)
+        self.setFixedWidth(210)
 
         main_layout = QVBoxLayout()
 
@@ -59,6 +59,26 @@ class TimerSettingsDialog(QDialog):
         self.set_default_font_size_checkbox = QCheckBox("Default Font Size")
         main_layout.addWidget(self.set_default_font_size_checkbox)
 
+        # Main Window Transparency Controls
+        self.main_window_transparent_checkbox = QCheckBox("Transparent Main Window")
+        initial_transparent_bg = self.app_ref.global_settings.get("main_window_transparent_background", False)
+        self.main_window_transparent_checkbox.setChecked(initial_transparent_bg)
+        main_layout.addWidget(self.main_window_transparent_checkbox)
+
+        opacity_layout = QHBoxLayout()
+        opacity_layout.addWidget(QLabel("Opacity Level (if transparent):"))
+        self.main_window_opacity_spinbox = QSpinBox()
+        self.main_window_opacity_spinbox.setMinimum(0) # 0% opacity
+        self.main_window_opacity_spinbox.setMaximum(100) # 100% opacity
+        self.main_window_opacity_spinbox.setSuffix("%")
+        initial_opacity_percent = int(self.app_ref.global_settings.get("main_window_opacity_level", 1.0) * 100)
+        self.main_window_opacity_spinbox.setValue(initial_opacity_percent)
+        self.main_window_opacity_spinbox.setEnabled(initial_transparent_bg) # Enable only if transparency is on
+        opacity_layout.addWidget(self.main_window_opacity_spinbox)
+        main_layout.addLayout(opacity_layout)
+
+        self.main_window_transparent_checkbox.toggled.connect(self.main_window_opacity_spinbox.setEnabled)
+
         self.remember_window_pos_checkbox = QCheckBox("Remember window position on exit")
         initial_remember_pos = False
         if hasattr(self.app_ref, 'global_settings') and \
@@ -70,8 +90,15 @@ class TimerSettingsDialog(QDialog):
         main_layout.addSpacing(10)
 
         main_layout.addWidget(QLabel("Comment:"))
-        self.comment_textbox = QTextEdit(self.current_config.get("comment", ""))
-        self.comment_textbox.setFixedHeight(120)
+        comment_value = self.current_config.get("comment", "")
+        print(f"DEBUG Dialog Init: Comment is '{comment_value}' (repr: {repr(comment_value)})")
+        # self.comment_textbox = QTextEdit(comment_value) # Original line
+        self.comment_textbox = QTextEdit()  # Create empty
+        self.comment_textbox.setAcceptRichText(False)  # Explicitly set to plain text mode
+        self.comment_textbox.setPlainText(comment_value)  # Set the text
+        # self.comment_textbox.setFixedHeight(120) # Remove fixed height
+        self.comment_textbox.setMinimumHeight(60) # Set a minimum height
+        self.comment_textbox.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding) # Allow expanding
         main_layout.addWidget(self.comment_textbox)
 
         main_layout.addSpacing(10)
@@ -227,6 +254,13 @@ class TimerSettingsDialog(QDialog):
             if hasattr(self.app_ref, 'update_global_default_time_text_color'): # New method needed in main_app
                 self.app_ref.update_global_default_time_text_color(self._temp_selected_time_text_color)
 
+        # Update main window transparency settings
+        if hasattr(self.app_ref, 'update_global_main_window_transparency'):
+            self.app_ref.update_global_main_window_transparency(self.main_window_transparent_checkbox.isChecked())
+        
+        if hasattr(self.app_ref, 'update_global_main_window_opacity'):
+            opacity_percent = self.main_window_opacity_spinbox.value()
+            self.app_ref.update_global_main_window_opacity(opacity_percent / 100.0)
 
         if hasattr(self.app_ref, 'update_remember_window_position'):
             self.app_ref.update_remember_window_position(self.remember_window_pos_checkbox.isChecked())
@@ -259,6 +293,13 @@ class TimerSettingsDialog(QDialog):
             initial_remember_pos = self.parent_card.app_ref.global_settings.get("remember_window_position", False)
         self.remember_window_pos_checkbox.setChecked(initial_remember_pos)
 
+        # Reset main window transparency controls
+        initial_transparent_bg = self.app_ref.global_settings.get("main_window_transparent_background", False)
+        self.main_window_transparent_checkbox.setChecked(initial_transparent_bg)
+        initial_opacity_percent = int(self.app_ref.global_settings.get("main_window_opacity_level", 1.0) * 100)
+        self.main_window_opacity_spinbox.setValue(initial_opacity_percent)
+        self.main_window_opacity_spinbox.setEnabled(initial_transparent_bg)
+
     def _delete_timer_from_dialog_button(self):
         # This method is called specifically by the "Delete Timer" button in the QDialogButtonBox
         # It reuses the _delete_timer logic which shows a confirmation.
@@ -288,10 +329,20 @@ class TimerSettingsDialog(QDialog):
         month = qdate.month()
         day = qdate.day()
         end_date_str = datetime(year, month, day, 0, 0, 0).strftime("%Y-%m-%d %H:%M:%S")
+        
+        comment_from_textbox = self.comment_textbox.toPlainText()
+        print(f"DEBUG Dialog Save (get_updated_config): Comment from textbox is '{comment_from_textbox}' (repr: {repr(comment_from_textbox)})")
+        
+        # Normalize the doubled newlines from toPlainText().
+        # This handles the observed behavior where each single visual newline (originally \n)
+        # becomes \n\n when retrieved by toPlainText().
+        normalized_comment = comment_from_textbox.replace('\n\n', '\n')
+        print(f"DEBUG Dialog Save (get_updated_config): Normalized comment is '{normalized_comment}' (repr: {repr(normalized_comment)})")
+
         return {
             "title": self.title_entry.text(),
             "end_date": end_date_str,
-            "comment": self.comment_textbox.toPlainText(),
+            "comment": normalized_comment, # Use normalized comment
             "bg_color_title": self._temp_selected_title_color,
             "bg_color_time": self._temp_selected_time_bg_color, # Renamed
             "text_color_time": self._temp_selected_time_text_color, # New
@@ -440,8 +491,9 @@ class TimerCard(QFrame): # Changed from ctk.CTkFrame
     def enterEvent(self, event: QEnterEvent): # Override enterEvent
         # Only start hover timer if left mouse button is not down (i.e., not in a drag attempt)
         if not self.is_left_mouse_button_down:
-            comment = self.config.get("comment", "").strip()
-            if comment:
+            comment_for_tooltip = self.config.get("comment", "").strip()
+            if comment_for_tooltip:
+                print(f"DEBUG Tooltip (enterEvent): Comment is '{comment_for_tooltip}' (repr: {repr(comment_for_tooltip)})")
                 if hasattr(self, 'hover_timer') and self.hover_timer and self.hover_timer.isActive(): # Check isActive before stopping
                     self.hover_timer.stop()
                 
@@ -638,6 +690,16 @@ if __name__ == '__main__':
             self.default_time_text_color = color_hex
             print(f"MockApp: Global default time text color set to {color_hex}")
             self.global_settings["default_time_text_color"] = color_hex # Save to global_settings
+            self.save_global_settings()
+            
+        def update_global_main_window_transparency(self, is_transparent):
+            print(f"MockApp: Global main window transparency set to {is_transparent}")
+            self.global_settings["main_window_transparent_background"] = is_transparent
+            self.save_global_settings()
+
+        def update_global_main_window_opacity(self, opacity_level):
+            print(f"MockApp: Global main window opacity level set to {opacity_level}")
+            self.global_settings["main_window_opacity_level"] = opacity_level
             self.save_global_settings()
             
         def save_global_settings(self):
