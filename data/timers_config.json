@@ -3,19 +3,12 @@
         "default_time_font_size": 48,
         "default_bg_color_title": "#00007f",
         "default_bg_color_time": "#55aaff",
-        "remember_window_position": true,
-<<<<<<< HEAD
-        "window_x": -279,
-        "window_y": 238,
-        "window_width": 157,
-        "window_height": 559
-=======
-        "window_x": -465,
-        "window_y": 661,
-        "window_width": 156,
-        "window_height": 566
->>>>>>> 64f6837aa5ef7aab95aa29ea299160c9f5050a8f
-    },
+    "remember_window_position": true,
+    "window_x": -279,
+    "window_y": 238,
+    "window_width": 157,
+    "window_height": 559
+},
     "timers": {
         "timer_1748562079870_0": {
             "title": "Birthday",
@@ -57,24 +50,6 @@
             "set_default_title_color": false,
             "set_default_time_color": false,
             "text_color_time": "#000000",
-            "set_default_time_text_color": false
-        },
-        "timer_20f35541f6464c03aa6ef97b10d84bfc": {
-            "title": "New Timer",
-            "end_date": "2025-04-01 00:00:00",
-            "comment": "",
-            "bg_color_title": "#00007f",
-            "bg_color_time": "#55aaff",
-            "font_size_time": 24,
-<<<<<<< HEAD
-            "sort_order": 1,
-=======
-            "sort_order": 0,
->>>>>>> 64f6837aa5ef7aab95aa29ea299160c9f5050a8f
-            "text_color_time": "#000000",
-            "set_default_font_size": false,
-            "set_default_title_color": false,
-            "set_default_time_color": false,
             "set_default_time_text_color": false
         }
     }
