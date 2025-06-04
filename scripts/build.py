@@ -21,9 +21,6 @@ build_path = os.path.join(project_root, 'build')
 # Path to the data directory
 data_dir = os.path.join(project_root, 'data')
 
-# Path to an icon file (optional, replace with your actual .ico file or remove)
-icon_file = os.path.join(project_root, 'assets', 'app_icon.ico') # Assuming you might have an icon in an assets folder
-
 # PyInstaller command arguments
 pyinstaller_args = [
     '--name={}'.format(exe_name),
@@ -38,12 +35,6 @@ pyinstaller_args = [
     '--clean',  # Clean PyInstaller cache and remove temporary files before building
     # '--noconfirm', # Overwrite output directory without asking
 ]
-
-# Add icon if it exists, otherwise PyInstaller uses a default icon
-if os.path.exists(icon_file):
-    pyinstaller_args.append('--icon={}'.format(icon_file))
-else:
-    print(f"Warning: Icon file not found at {icon_file}. Using default icon.")
 
 # Add the main script to the arguments
 pyinstaller_args.append(main_script)
@@ -91,22 +82,4 @@ def build():
         print("Cleanup complete.")
 
 if __name__ == '__main__':
-    # Create a dummy icon file if it doesn't exist, so PyInstaller doesn't fail
-    # In a real scenario, you'd have your actual icon.
-    # This is just for the script to be runnable without a real icon.
-    # You should replace 'assets/app_icon.ico' with your actual icon path or remove icon handling.
-    dummy_icon_path_dir = os.path.join(project_root, 'assets')
-    os.makedirs(dummy_icon_path_dir, exist_ok=True)
-    dummy_icon_file = os.path.join(dummy_icon_path_dir, 'app_icon.ico')
-    if not os.path.exists(dummy_icon_file):
-        try:
-            # Create a minimal valid ICO file (very basic)
-            # This is a hack for demonstration; use a real ICO file.
-            with open(dummy_icon_file, 'wb') as f:
-                f.write(b'\\x00\\x00\\x01\\x00\\x01\\x00\\x10\\x10\\x00\\x00\\x00\\x00\\x00\\x00\\x10\\x00\\x00\\x00\\x16\\x00\\x00\\x00(\\x00\\x00\\x00\\x10\\x00\\x00\\x00 \\x00\\x00\\x00\\x01\\x00\\x04\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\xff\\xff\\xff\\x00')
-            print(f"Created a dummy icon file at: {dummy_icon_file}")
-        except Exception as e:
-            print(f"Could not create dummy icon file: {e}. Proceeding without icon.")
-            icon_file = "None" # PyInstaller will use default
-
     build()
