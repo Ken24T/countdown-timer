@@ -1,10 +1,10 @@
 import sys
 from PySide6.QtWidgets import (
-    QApplication, QMainWindow, QWidget, QVBoxLayout, QPushButton, QScrollArea, QFrame
+    QApplication, QMainWindow, QWidget, QVBoxLayout, QScrollArea, QFrame, QMenu
 )
 from PySide6.QtCore import Qt, QByteArray
 from PySide6 import QtGui
-from PySide6.QtGui import QColor # Add QColor
+from PySide6.QtGui import QColor, QAction # Add QColor, QAction
 from .components.timer_card import TimerCard, DEFAULT_TIME_FONT_SIZE, DEFAULT_TITLE_BG_COLOR, DEFAULT_TIME_BG_COLOR, DEFAULT_TIME_TEXT_COLOR # Corrected and added DEFAULT_TIME_TEXT_COLOR
 import os
 import json
@@ -55,18 +55,18 @@ class App(QMainWindow):
         self.setCentralWidget(self.central_widget)
         self.main_layout = QVBoxLayout(self.central_widget)
 
-        self.controls_frame = QFrame(self.central_widget)
-        controls_layout = QVBoxLayout(self.controls_frame)
-        self.add_timer_button = QPushButton("Add New Timer")
-        self.add_timer_button.setFixedWidth(120)
-        self.add_timer_button.setStyleSheet("""
-            QPushButton { background-color: #003366; color: white; padding: 5px; border-radius: 5px; }
-            QPushButton:hover { background-color: #004080; }
-            QPushButton:pressed { background-color: #002244; }
-        """)
-        self.add_timer_button.clicked.connect(lambda: self.add_new_timer_action())
-        controls_layout.addWidget(self.add_timer_button, alignment=Qt.AlignmentFlag.AlignCenter)
-        self.main_layout.addWidget(self.controls_frame)
+        # self.controls_frame = QFrame(self.central_widget) # Removed
+        # controls_layout = QVBoxLayout(self.controls_frame) # Removed
+        # self.add_timer_button = QPushButton("Add New Timer") # Removed
+        # self.add_timer_button.setFixedWidth(120) # Removed
+        # self.add_timer_button.setStyleSheet("""
+        #     QPushButton { background-color: #003366; color: white; padding: 5px; border-radius: 5px; }
+        #     QPushButton:hover { background-color: #004080; }
+        #     QPushButton:pressed { background-color: #002244; }
+        # """) # Removed
+        # self.add_timer_button.clicked.connect(lambda: self.add_new_timer_action()) # Removed
+        # controls_layout.addWidget(self.add_timer_button, alignment=Qt.AlignmentFlag.AlignCenter) # Removed
+        # self.main_layout.addWidget(self.controls_frame) # Removed
 
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
@@ -116,6 +116,16 @@ class App(QMainWindow):
         self.scrollable_timers_widget.dropEvent = self.dropEvent # type: ignore
         
         self.create_timer_cards()
+
+        self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.customContextMenuRequested.connect(self.show_main_window_context_menu)
+
+    def show_main_window_context_menu(self, position):
+        menu = QMenu(self)
+        add_timer_action = QAction("Add New Timer", self)
+        add_timer_action.triggered.connect(lambda: self.add_new_timer_action())
+        menu.addAction(add_timer_action)
+        menu.exec(self.mapToGlobal(position))
 
     def add_new_timer_action(self, title="New Timer", end_date_str=None, comment=""):
         card_id = f"timer_{uuid.uuid4().hex}"
@@ -364,22 +374,20 @@ class App(QMainWindow):
             self.scroll_area.setStyleSheet("background:transparent; border:none;")
             self.scroll_area.viewport().setStyleSheet("background:transparent;")
             
-            # These widgets should remain opaque using the theme's window color
+            # These widgets should remain opaque using the theme\'s window color
             self.scrollable_timers_widget.setStyleSheet(OPAQUE_WIDGET_STYLE_FOR_TRANSPARENT_WINDOW)
-            self.controls_frame.setStyleSheet(OPAQUE_WIDGET_STYLE_FOR_TRANSPARENT_WINDOW)
         else:
             self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, False)
             self.setWindowOpacity(1.0) # Fully opaque
             
             # Ensure central widget has the standard window background
             self.central_widget.setStyleSheet(OPAQUE_WIDGET_STYLE_FOR_TRANSPARENT_WINDOW)
-            # Reset styles for scroll area and viewport to be transparent to central_widget's background
+            # Reset styles for scroll area and viewport to be transparent to central_widget\'s background
             self.scroll_area.setStyleSheet("")
             self.scroll_area.viewport().setStyleSheet("")
             
-            # These widgets should explicitly use the theme's window background color
+            # These widgets should explicitly use the theme\'s window background color
             self.scrollable_timers_widget.setStyleSheet(OPAQUE_WIDGET_STYLE_FOR_TRANSPARENT_WINDOW)
-            self.controls_frame.setStyleSheet(OPAQUE_WIDGET_STYLE_FOR_TRANSPARENT_WINDOW)
 
     def update_global_main_window_transparency(self, enabled: bool):
         self.global_settings["main_window_transparent_background"] = enabled

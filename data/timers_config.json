@@ -5,10 +5,10 @@
         "default_bg_color_time": "#55aaff",
         "default_time_text_color": "#FFFFFF",
         "remember_window_position": true,
-        "window_x": 2512,
-        "window_y": 183,
+        "window_x": -286,
+        "window_y": 92,
         "window_width": 156,
-        "window_height": 554,
+        "window_height": 753,
         "main_window_transparent_background": false,
         "main_window_opacity_level": 0.5
     },
