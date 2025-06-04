@@ -7,7 +7,7 @@
         "remember_window_position": true,
         "window_x": -435,
         "window_y": 44,
-        "window_width": 156,
+        "window_width": 154,
         "window_height": 753,
         "main_window_transparent_background": false,
         "main_window_opacity_level": 0.5
@@ -16,7 +16,7 @@
         "timer_1748562079870_0": {
             "title": "Birthday",
             "end_date": "2025-07-24 00:00:00",
-            "comment": "68 yo\nTrip away to the Gold Coast",
+            "comment": "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n<html><head><meta name=\"qrichtext\" content=\"1\" /><meta charset=\"utf-8\" /><style type=\"text/css\">\np, li { white-space: pre-wrap; }\nhr { height: 1px; border-width: 0; }\nli.unchecked::marker { content: \"\\2610\"; }\nli.checked::marker { content: \"\\2612\"; }\n</style></head><body style=\" font-family:'Segoe UI'; font-size:9pt; font-weight:400; font-style:normal;\">\n<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-weight:700;\">68</span></p>\n<p style=\"-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><br /></p>\n<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><span style=\" font-style:italic;\">Trip away to the Gold Coast</span></p></body></html>",
             "bg_color_title": "#00007f",
             "bg_color_time": "#55aaff",
             "font_size_time": 48,
@@ -25,7 +25,8 @@
             "set_default_time_color": false,
             "sort_order": 1,
             "text_color_time": "#000000",
-            "set_default_time_text_color": false
+            "set_default_time_text_color": false,
+            "remember_window_position": false
         },
         "timer_a8ca94dc3983433b8f034a6d42120aed": {
             "title": "Dune Awakening",
