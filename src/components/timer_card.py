@@ -486,10 +486,10 @@ class TimerCard(QFrame): # Changed from ctk.CTkFrame
 
         self.apply_region_colors()
 
-        self.timer = QTimer(self)
-        self.timer.timeout.connect(self.update_timer_display)
-        self.timer.start(1000)
-        self.update_timer_display()
+        # self.timer = QTimer(self) # Removed individual timer
+        # self.timer.timeout.connect(self.update_timer_display) # Removed
+        # self.timer.start(1000) # Removed
+        self.update_timer_display() # Initial display update called here, will also be called by main app
         
         self.settings_dialog = None
         # self.hover_timer = None # Initialized in __init__ now
@@ -544,12 +544,13 @@ class TimerCard(QFrame): # Changed from ctk.CTkFrame
 
         if days_remaining < 0:
             self.time_label.setText("Ended") 
-            if self.timer.isActive(): # Check if timer is active before trying to stop
-                self.timer.stop() # Stop the timer if the event has passed
+            # No timer to stop here anymore
+            # if self.timer.isActive(): # Removed
+            #     self.timer.stop() # Removed
         else:
             # Display the number of full days remaining until the target date
             # If target_date is today, days_remaining will be 0.
-            self.time_label.setText(f"{days_remaining}") # Old display was: f"{days_remaining} day{'s' if days_remaining != 1 else ''}"
+            self.time_label.setText(f"{days_remaining}")
 
 
     def enterEvent(self, event: QEnterEvent): # Override enterEvent
@@ -690,8 +691,10 @@ class TimerCard(QFrame): # Changed from ctk.CTkFrame
             self.update_timer_display() 
             
             # Restart timer if it's not active and the end date is in the future
-            if self.end_datetime > datetime.now() and not self.timer.isActive():
-                self.timer.start(1000)
+            # The main app's timer will handle periodic updates.
+            # An immediate call to update_timer_display already happened.
+            # if self.end_datetime > datetime.now() and not self.timer.isActive(): # Removed
+            #     self.timer.start(1000) # Removed
 
             # Persist the updated configuration for this specific card
             self.app_ref.update_timer_config(self.card_id, self.config)

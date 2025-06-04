@@ -2,7 +2,7 @@ import sys
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QScrollArea, QFrame, QMenu
 )
-from PySide6.QtCore import Qt, QByteArray
+from PySide6.QtCore import Qt, QByteArray, QTimer, QTime # Added QTimer, QTime
 from PySide6 import QtGui
 from PySide6.QtGui import QColor, QAction # Add QColor, QAction
 from .components.timer_card import TimerCard, DEFAULT_TIME_FONT_SIZE, DEFAULT_TITLE_BG_COLOR, DEFAULT_TIME_BG_COLOR, DEFAULT_TIME_TEXT_COLOR # Corrected and added DEFAULT_TIME_TEXT_COLOR
@@ -115,10 +115,43 @@ class App(QMainWindow):
         self.scrollable_timers_widget.dragMoveEvent = self.dragMoveEvent # type: ignore
         self.scrollable_timers_widget.dropEvent = self.dropEvent # type: ignore
         
-        self.create_timer_cards()
+        self.create_timer_cards() # Initial creation and update of cards
 
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.customContextMenuRequested.connect(self.show_main_window_context_menu)
+
+        # Central timer for midnight updates
+        self.midnight_timer = QTimer(self)
+        self.midnight_timer.timeout.connect(self.update_all_timer_displays)
+        self.schedule_midnight_timer() # Schedule the first midnight check
+
+    def schedule_midnight_timer(self):
+        now = QTime.currentTime()
+        midnight = QTime(0, 0, 0)
+        ms_until_midnight = now.msecsTo(midnight)
+        if ms_until_midnight < 0: # If it's already past midnight for today
+            ms_until_midnight += 24 * 60 * 60 * 1000 # Add 24 hours in milliseconds
+        
+        # For testing, trigger more frequently, e.g., every minute
+        # test_interval = 60 * 1000 # 1 minute
+        # self.midnight_timer.start(test_interval)
+        # print(f"Midnight timer scheduled to fire in {test_interval / 1000} seconds (for testing).")
+
+        # Schedule to fire at the next midnight, then every 24 hours
+        QTimer.singleShot(ms_until_midnight, self._start_daily_midnight_timer)
+        print(f"Midnight timer initially scheduled to fire in {ms_until_midnight / 1000 / 60:.2f} minutes.")
+
+    def _start_daily_midnight_timer(self):
+        self.update_all_timer_displays() # First update at the first midnight
+        # Now schedule it to run every 24 hours
+        self.midnight_timer.start(24 * 60 * 60 * 1000) # 24 hours in milliseconds
+        print("Daily midnight timer started.")
+
+    def update_all_timer_displays(self):
+        print(f"Midnight timer triggered at {QTime.currentTime().toString()}. Updating all timer cards.")
+        for card_id, card_widget in self.timers.items():
+            if isinstance(card_widget, TimerCard):
+                card_widget.update_timer_display()
 
     def show_main_window_context_menu(self, position):
         menu = QMenu(self)
