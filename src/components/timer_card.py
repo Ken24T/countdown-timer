@@ -3,10 +3,13 @@ from PySide6.QtWidgets import (
     QWidget, QLabel, QVBoxLayout, QHBoxLayout, QPushButton, QFrame,
     QApplication, QDialog, QLineEdit, QTextEdit, QColorDialog, QMessageBox,
     QSizePolicy, QDateEdit, QDateTimeEdit, QDialogButtonBox, QSpinBox, QCheckBox,
-    QMenu, QToolTip, QFormLayout # Add QFormLayout
+    QMenu, QToolTip, QFormLayout, QToolBar # Added QToolBar
 )
-from PySide6.QtCore import Qt, QTimer, QDateTime, QDate, QEvent, QMimeData # Add QMimeData
-from PySide6.QtGui import QPalette, QColor, QMouseEvent, QFont, QAction, QCursor, QEnterEvent, QDrag, QPixmap # Add QDrag, QPixmap
+from PySide6.QtCore import Qt, QTimer, QDateTime, QDate, QEvent, QMimeData
+from PySide6.QtGui import (
+    QPalette, QColor, QMouseEvent, QFont, QAction, QCursor, QEnterEvent, 
+    QDrag, QPixmap, QTextCharFormat, QTextDocument # Added QTextCharFormat, QTextDocument
+)
 
 from datetime import datetime, timedelta
 
@@ -89,17 +92,53 @@ class TimerSettingsDialog(QDialog):
         
         main_layout.addSpacing(10)
 
+        # Rich Text Comment Editor
         main_layout.addWidget(QLabel("Comment:"))
+
+        self.comment_toolbar = QToolBar(self)
+        self.action_bold = QAction("B", self)
+        self.action_bold.setToolTip("Bold")
+        self.action_bold.setCheckable(True)
+        bold_font = QFont("Arial")
+        bold_font.setWeight(QFont.Weight.Bold)
+        self.action_bold.setFont(bold_font)
+        
+        self.action_italic = QAction("I", self)
+        self.action_italic.setToolTip("Italic")
+        self.action_italic.setCheckable(True)
+        italic_font = QFont("Arial")
+        italic_font.setItalic(True)
+        self.action_italic.setFont(italic_font)
+
+        self.action_underline = QAction("U", self)
+        self.action_underline.setToolTip("Underline")
+        self.action_underline.setCheckable(True)
+        underline_font = QFont("Arial")
+        underline_font.setUnderline(True)
+        self.action_underline.setFont(underline_font)
+
+        self.comment_toolbar.addAction(self.action_bold)
+        self.comment_toolbar.addAction(self.action_italic)
+        self.comment_toolbar.addAction(self.action_underline)
+        main_layout.addWidget(self.comment_toolbar)
+
         comment_value = self.current_config.get("comment", "")
-        print(f"DEBUG Dialog Init: Comment is '{comment_value}' (repr: {repr(comment_value)})")
-        # self.comment_textbox = QTextEdit(comment_value) # Original line
+        # print(f"DEBUG Dialog Init: Comment is '{comment_value}' (repr: {repr(comment_value)})") # Debug print removed
         self.comment_textbox = QTextEdit()  # Create empty
-        self.comment_textbox.setAcceptRichText(False)  # Explicitly set to plain text mode
-        self.comment_textbox.setPlainText(comment_value)  # Set the text
-        # self.comment_textbox.setFixedHeight(120) # Remove fixed height
-        self.comment_textbox.setMinimumHeight(60) # Set a minimum height
+        # self.comment_textbox.setAcceptRichText(False) # Removed, default is True (rich text)
+        self.comment_textbox.setHtml(comment_value)  # Set the HTML content
+        self.comment_textbox.setMinimumHeight(80) # Increased minimum height for rich text editor
         self.comment_textbox.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding) # Allow expanding
         main_layout.addWidget(self.comment_textbox)
+
+        # Connect toolbar actions
+        self.action_bold.triggered.connect(self._toggle_bold)
+        self.action_italic.triggered.connect(self._toggle_italic)
+        self.action_underline.triggered.connect(self._toggle_underline)
+
+        # Update toolbar button states based on cursor position/selection format
+        self.comment_textbox.currentCharFormatChanged.connect(self._update_format_actions_state)
+        self.comment_textbox.cursorPositionChanged.connect(self._update_format_actions_state)
 
         main_layout.addSpacing(10)
 
@@ -201,6 +240,26 @@ class TimerSettingsDialog(QDialog):
             self.time_text_color_preview.setPalette(QApplication.style().standardPalette())
             self.time_text_color_preview.setText("Preview")
 
+    def _toggle_bold(self, checked):
+        fmt = QTextCharFormat()
+        fmt.setFontWeight(QFont.Weight.Bold if checked else QFont.Weight.Normal)
+        self.comment_textbox.mergeCurrentCharFormat(fmt)
+
+    def _toggle_italic(self, checked):
+        fmt = QTextCharFormat()
+        fmt.setFontItalic(checked)
+        self.comment_textbox.mergeCurrentCharFormat(fmt)
+
+    def _toggle_underline(self, checked):
+        fmt = QTextCharFormat()
+        fmt.setFontUnderline(checked)
+        self.comment_textbox.mergeCurrentCharFormat(fmt)
+
+    def _update_format_actions_state(self):
+        fmt = self.comment_textbox.currentCharFormat()
+        self.action_bold.setChecked(fmt.fontWeight() == QFont.Weight.Bold)
+        self.action_italic.setChecked(fmt.fontItalic())
+        self.action_underline.setChecked(fmt.fontUnderline())
 
     def _choose_title_region_color(self):
         initial_color = QColor(self._temp_selected_title_color) if self._temp_selected_title_color else Qt.GlobalColor.white
@@ -232,7 +291,8 @@ class TimerSettingsDialog(QDialog):
         self.current_config["end_date"] = dt_obj.strftime("%Y-%m-%d %H:%M:%S")
 
         self.current_config["font_size_time"] = self.time_font_size_spinbox.value()
-        self.current_config["comment"] = self.comment_textbox.toPlainText()
+        # self.current_config["comment"] = self.comment_textbox.toPlainText() # Old plain text
+        self.current_config["comment"] = self.comment_textbox.toHtml() # Use toHtml() for rich text
         
         self.current_config["bg_color_title"] = self._temp_selected_title_color
         self.current_config["bg_color_time"] = self._temp_selected_time_bg_color # Renamed variable
@@ -278,7 +338,8 @@ class TimerSettingsDialog(QDialog):
                 self.date_edit.setDate(QDate.currentDate().addDays(1))
         else:
             self.date_edit.setDate(QDate.currentDate().addDays(1))
-        self.comment_textbox.setText(self.parent_card.config.get("comment", ""))
+        # self.comment_textbox.setText(self.parent_card.config.get("comment", "")) # Old plain text
+        self.comment_textbox.setHtml(self.parent_card.config.get("comment", "")) # Use setHtml for rich text
         
         self._temp_selected_title_color = self.parent_card.config.get("bg_color_title", DEFAULT_TITLE_BG_COLOR)
         self._temp_selected_time_bg_color = self.parent_card.config.get("bg_color_time", DEFAULT_TIME_BG_COLOR) # Renamed
@@ -330,19 +391,18 @@ class TimerSettingsDialog(QDialog):
         day = qdate.day()
         end_date_str = datetime(year, month, day, 0, 0, 0).strftime("%Y-%m-%d %H:%M:%S")
         
-        comment_from_textbox = self.comment_textbox.toPlainText()
-        print(f"DEBUG Dialog Save (get_updated_config): Comment from textbox is '{comment_from_textbox}' (repr: {repr(comment_from_textbox)})")
+        # comment_from_textbox = self.comment_textbox.toPlainText() # Old plain text
+        comment_from_textbox = self.comment_textbox.toHtml() # Use toHtml() for rich text
+        # print(f"DEBUG Dialog Save (get_updated_config): Comment from textbox is '{comment_from_textbox}' (repr: {repr(comment_from_textbox)})") # Debug print removed
         
-        # Normalize the doubled newlines from toPlainText().
-        # This handles the observed behavior where each single visual newline (originally \n)
-        # becomes \n\n when retrieved by toPlainText().
-        normalized_comment = comment_from_textbox.replace('\n\n', '\n')
-        print(f"DEBUG Dialog Save (get_updated_config): Normalized comment is '{normalized_comment}' (repr: {repr(normalized_comment)})")
+        # Normalize the doubled newlines from toPlainText(). # Removed this logic as it's for plain text
+        # normalized_comment = comment_from_textbox.replace('\\n\\n', '\\n')
+        # print(f"DEBUG Dialog Save (get_updated_config): Normalized comment is '{normalized_comment}' (repr: {repr(normalized_comment)})") # Debug print removed
 
         return {
             "title": self.title_entry.text(),
             "end_date": end_date_str,
-            "comment": normalized_comment, # Use normalized comment
+            "comment": comment_from_textbox, # Use HTML comment directly
             "bg_color_title": self._temp_selected_title_color,
             "bg_color_time": self._temp_selected_time_bg_color, # Renamed
             "text_color_time": self._temp_selected_time_text_color, # New
@@ -361,6 +421,10 @@ class TimerCard(QFrame): # Changed from ctk.CTkFrame
         self.card_id = card_id
         self.config = config.copy() if config else {} 
         self.is_left_mouse_button_down = False
+        self.hover_timer = QTimer(self) # For tooltip delay
+        self.hover_timer.setSingleShot(True)
+        self.hover_timer.setInterval(750) # 750ms delay, you can adjust this
+        self.hover_timer.timeout.connect(self._show_comment_tooltip)
         
         if "comment" not in self.config: self.config["comment"] = ""
         if self.config.get("bg_color_title") is None:
@@ -373,6 +437,8 @@ class TimerCard(QFrame): # Changed from ctk.CTkFrame
             self.config["font_size_time"] = DEFAULT_TIME_FONT_SIZE
         if self.config.get("sort_order") is None:
             self.config["sort_order"] = 0 
+        if self.config.get("remember_window_position") is None:
+            self.config["remember_window_position"] = False # Default to not remembering window position
         
         self.title_str = title 
         self.end_date_str = end_date 
@@ -426,7 +492,7 @@ class TimerCard(QFrame): # Changed from ctk.CTkFrame
         self.update_timer_display()
         
         self.settings_dialog = None
-        self.hover_timer = None
+        # self.hover_timer = None # Initialized in __init__ now
 
     def _apply_time_label_font(self):
         font_time = self.time_label.font()
@@ -478,29 +544,23 @@ class TimerCard(QFrame): # Changed from ctk.CTkFrame
 
         if days_remaining < 0:
             self.time_label.setText("Ended") 
-            if self.timer.isActive(): # Stop timer only if it's running
-                self.timer.stop() 
+            if self.timer.isActive(): # Check if timer is active before trying to stop
+                self.timer.stop() # Stop the timer if the event has passed
         else:
             # Display the number of full days remaining until the target date
             # If target_date is today, days_remaining will be 0.
-            self.time_label.setText(f"{days_remaining}")
-            
-            if not self.timer.isActive(): # Ensure timer is running if not ended
-                 self.timer.start(1000) # Or your desired interval
+            self.time_label.setText(f"{days_remaining}") # Old display was: f"{days_remaining} day{'s' if days_remaining != 1 else ''}"
+
 
     def enterEvent(self, event: QEnterEvent): # Override enterEvent
-        # Only start hover timer if left mouse button is not down (i.e., not in a drag attempt)
         if not self.is_left_mouse_button_down:
-            comment_for_tooltip = self.config.get("comment", "").strip()
-            if comment_for_tooltip:
-                print(f"DEBUG Tooltip (enterEvent): Comment is '{comment_for_tooltip}' (repr: {repr(comment_for_tooltip)})")
-                if hasattr(self, 'hover_timer') and self.hover_timer and self.hover_timer.isActive(): # Check isActive before stopping
-                    self.hover_timer.stop()
-                
-                self.hover_timer = QTimer(self)
-                self.hover_timer.setSingleShot(True)
-                self.hover_timer.timeout.connect(self._show_comment_tooltip)
-                self.hover_timer.start(1000) # 1-second delay
+            comment_html = self.config.get("comment", "")
+            if comment_html:
+                # Check if the comment (when stripped of HTML) has actual content
+                temp_doc = QTextDocument()
+                temp_doc.setHtml(comment_html)
+                if temp_doc.toPlainText().strip():
+                    self.hover_timer.start()
         super().enterEvent(event)
 
     def leaveEvent(self, event: QEvent): # Override leaveEvent
@@ -510,10 +570,17 @@ class TimerCard(QFrame): # Changed from ctk.CTkFrame
         super().leaveEvent(event)
 
     def _show_comment_tooltip(self):
-        comment = self.config.get("comment", "").strip()
-        if comment:
-            # Show tooltip near the mouse cursor
-            QToolTip.showText(QCursor.pos(), comment, self)
+        comment_html = self.config.get("comment", "").strip()
+        if comment_html:
+            # Further check to ensure the HTML isn't just empty paragraphs or similar
+            temp_doc = QTextDocument()
+            temp_doc.setHtml(comment_html)
+            if temp_doc.toPlainText().strip(): # Only show if there's actual text content
+                QToolTip.showText(QCursor.pos(), comment_html, self) # rect and msecDisplayTime removed
+            else:
+                QToolTip.hideText() # Ensure it's hidden if comment is effectively empty
+        else:
+            QToolTip.hideText() # Ensure it's hidden if comment is empty string
 
     def mouseDoubleClickEvent(self, event: QMouseEvent):
         self._open_settings_dialog()
